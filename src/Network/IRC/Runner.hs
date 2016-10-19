@@ -1,17 +1,30 @@
 {-# Language RecordWildCards #-}
 {-# Language OverloadedStrings #-}
+{-# Language GeneralizedNewtypeDeriving #-}
 module Network.IRC.Runner where
 
+import Hooks.Algebra
 import Network.IRC
 import Network.Socket hiding (recv, send)
 import Control.Monad.Writer
 import Control.Monad.Reader
+import Data.Text (Text)
 import System.IO (IOMode(..), hClose, Handle)
 import qualified Data.Text.IO as T
 import qualified Data.Text as T
 import Control.Concurrent.STM.TChan
 import Control.Concurrent.STM (atomically)
-import Control.Concurrent (forkIO)
+import Control.Concurrent (forkIO, ThreadId)
+
+data IrcInfo = IrcInfo {
+    hostname :: String
+  , port :: Int
+  , channels :: [Text]
+  , hooks :: HookBuilder ()
+  }
+
+newtype HookBuilder a = HookBuilder {unHook :: WriterT [ThreadId] (ReaderT Hook IO)  a}
+  deriving (Functor, Applicative, Monad, MonadWriter [ThreadId], MonadReader Hook, MonadIO)
 
 connectIrc :: IrcInfo -> IO ()
 connectIrc IrcInfo{..} = do
@@ -25,7 +38,7 @@ connectIrc IrcInfo{..} = do
     handle <- socketToHandle sock ReadWriteMode
     mapM_ (sendMessage' outChan) (initial ++ [Join c | c <- channels])
     _writer <- forkIO (ircWriter outChan handle)
-    _threads <- runReaderT (execWriterT $ unHook hooks) chans
+    _threads <- runReaderT (execWriterT . unHook $ hooks) chans
     ircReader outChan inChan handle
     hClose handle
 
@@ -45,13 +58,13 @@ ircReader outChan inChan h = forever $ do
          Right m -> atomically $ writeTChan inChan m
          Left err -> T.putStrLn $ "Unparsed " <> err
 
-newHook :: (InMsg -> ReaderT (TChan OutMsg) IO ()) -> HookBuilder ()
+newHook :: (InMsg -> Irc ()) -> HookBuilder ()
 newHook f = do
   original <- ask
   (inChan, outChan) <- liftIO $ atomically $ duplicate original
   t <- liftIO $ forkIO $ forever $ do
     msg <- atomically $ readTChan inChan
-    runReaderT (f msg) outChan
-  tell [t]
+    runReaderT (runIrc (f msg)) outChan
+  tell []
   where
     duplicate (a,b) = (,) <$> dupTChan a <*> dupTChan b

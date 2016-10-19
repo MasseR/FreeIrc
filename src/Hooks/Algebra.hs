@@ -1,4 +1,5 @@
 {-# Language DeriveFunctor #-}
+{-# Language GeneralizedNewtypeDeriving #-}
 module Hooks.Algebra where
 
 import Control.Monad.Free
@@ -30,8 +31,11 @@ sendMessage out = liftF (A1 (SendMessage out ()))
 fetch :: String -> Free (IrcS IrcF WebF) Payload
 fetch url = liftF (A2 (Fetch url id))
 
-ircExecutor :: Free (IrcS IrcF WebF) a -> ReaderT OutChannel IO a
-ircExecutor = foldFree f
+newtype Irc a = Irc { unIrc :: Free (IrcS IrcF WebF) a }
+  deriving (Functor, Applicative, Monad)
+
+runIrc :: Irc a -> ReaderT OutChannel IO a
+runIrc = foldFree f . unIrc
   where
     f :: IrcS IrcF WebF a -> ReaderT OutChannel IO a
     f (A1 (SendMessage msg next)) = ask >>= \c -> liftIO (sendMessage' c msg) >> return next

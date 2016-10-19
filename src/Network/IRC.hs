@@ -24,19 +24,8 @@ data InMsg =
   | PrivMsg !Text !Text !Text
     deriving Show
 
-data IrcInfo = IrcInfo {
-    hostname :: String
-  , port :: Int
-  , channels :: [Text]
-  , hooks :: HookBuilder ()
-  }
-
 type OutChannel = TChan OutMsg
 type Hook = (TChan InMsg, TChan OutMsg)
-newtype HookBuilder a = HookBuilder {unHook :: WriterT [ThreadId] (ReaderT Hook IO) a}
-  deriving (Functor, Applicative, Monad, MonadWriter [ThreadId], MonadReader Hook, MonadIO)
-
-
 
 initial :: [OutMsg]
 initial = [Nick "Foobot", User "foo" "foo" "foo" "foo"]

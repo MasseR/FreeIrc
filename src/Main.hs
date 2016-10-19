@@ -5,6 +5,14 @@ import Network.IRC.Runner
 import Network.IRC
 import Hooks.Algebra
 import Hooks.Title
+import qualified Data.Text as T
+
+adminHook :: InMsg -> Irc ()
+adminHook (PrivMsg _nick _target msg) =
+  case T.words msg of
+       ["!join", channel] -> sendMessage (Join channel)
+       _ -> return ()
+adminHook _ = return ()
 
 echoHook :: InMsg -> Irc ()
 echoHook (PrivMsg _nick target msg) = sendMessage (Msg target msg)

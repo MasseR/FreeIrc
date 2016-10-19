@@ -1,18 +1,23 @@
 {-# Language DeriveFunctor #-}
 {-# Language GeneralizedNewtypeDeriving #-}
+{-# Language OverloadedStrings #-}
 module Hooks.Algebra where
 
 import Control.Monad.Free
 import Control.Monad.Reader
 import Network.IRC
 import Data.ByteString.Lazy (ByteString)
+import Control.Lens
+import Network.Wreq hiding (Payload)
+import Data.CaseInsensitive (CI)
+import qualified Data.ByteString as BS (ByteString)
 
 data IrcF a =
   SendMessage OutMsg a
   deriving Functor
 
-type Header = [(String, String)]
-data Payload = Payload Header ByteString
+type Header = [(CI BS.ByteString, BS.ByteString)]
+data Payload = Payload Header ByteString deriving Show
 data WebF a =
   Fetch String (Payload -> a)
   deriving Functor
@@ -39,5 +44,9 @@ runIrc = foldFree f . unIrc
   where
     f :: IrcS IrcF WebF a -> ReaderT OutChannel IO a
     f (A1 (SendMessage msg next)) = ask >>= \c -> liftIO (sendMessage' c msg) >> return next
-    f (A2 (Fetch _url _next)) = error "Not implemented"
+    f (A2 (Fetch url next)) = liftIO (fetchHandler url) >>= return . next
 
+fetchHandler :: String -> IO Payload
+fetchHandler url = do
+  r <- get url
+  return $ Payload (r ^. responseHeaders) (r ^. responseBody)

@@ -14,6 +14,9 @@ cabal-version:       >=1.10
 
 executable wtfboths
   hs-source-dirs:      src
+  other-modules:       Network.IRC.Runner
+                     , Network.IRC
+                     , Hooks.Algebra
   main-is:             Main.hs
   default-language:    Haskell2010
   build-depends:       base >= 4.7 && < 5
@@ -29,3 +32,5 @@ executable wtfboths
                      , transformers
                      , free
                      , dyre
+                     , lens
+                     , case-insensitive

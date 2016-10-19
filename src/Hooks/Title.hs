@@ -8,10 +8,12 @@ import Hooks.Algebra
 import Network.IRC
 import Data.ByteString.Lazy (ByteString)
 import qualified Data.ByteString.Lazy as LBS
+import qualified Data.ByteString as BS
 import Text.StringLike (castString)
 import Text.HTML.TagSoup
 import Data.Maybe (listToMaybe)
 import Data.Char (isSpace)
+import Data.List (find)
 
 urlTitleHook :: InMsg -> Irc ()
 urlTitleHook (PrivMsg _nick target msg) =
@@ -33,8 +35,14 @@ parseTitle body = let
 
 handleWeb :: Text -> Irc (Maybe Text)
 handleWeb url = do
-  Payload _ body <- fetch (T.unpack url)
-  return $ if LBS.length body < 64000 then parseTitle body else Nothing
+  Payload headers body <- fetch (T.unpack url)
+  return $ if isOk headers body then parseTitle body else Nothing
+  where
+    isOk headers body =
+      case find (\(k,_) -> k == "content-type") headers of
+           Just (_,v) -> "text/html" `BS.isPrefixOf` v
+           Nothing -> LBS.length body < 64000
+
 
 parseUrl :: Text -> Text -> Text
 parseUrl splitter msg = let

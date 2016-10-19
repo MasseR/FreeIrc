@@ -1,6 +1,7 @@
 {-# Language RecordWildCards #-}
 {-# Language OverloadedStrings #-}
 {-# Language GeneralizedNewtypeDeriving #-}
+{-# Language DeriveFunctor #-}
 module Network.IRC where
 
 import Control.Monad.Writer
@@ -35,6 +36,7 @@ data IrcInfo = IrcInfo {
   , hooks :: HookBuilder ()
   }
 
+type OutChannel = TChan OutMsg
 type Hook = (TChan InMsg, TChan OutMsg)
 newtype HookBuilder a = HookBuilder {unHook :: WriterT [ThreadId] (ReaderT Hook IO) a}
   deriving (Functor, Applicative, Monad, MonadWriter [ThreadId], MonadReader Hook, MonadIO)

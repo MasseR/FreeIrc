@@ -25,3 +25,7 @@ executable wtfboths
                      , wreq
                      , tagsoup
                      , lens
+                     , mtl
+                     , transformers
+                     , free
+                     , dyre

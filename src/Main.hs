@@ -17,6 +17,7 @@ data OutMsg =
     Nick !Text
   | User !Text !Text !Text !Text
   | Pong !Text
+  | Join !Text
   deriving Show
 
 data InMsg =
@@ -63,6 +64,7 @@ renderMessage msg =
        Nick nick -> T.unwords ["NICK", nick]
        User a b c d -> T.unwords ["USER", a, b, c, d]
        Pong response -> T.unwords ["PONG", response]
+       Join channel -> T.unwords ["JOIN", channel]
 
 parseLine :: Text -> Either Text InMsg
 parseLine line =

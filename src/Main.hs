@@ -16,6 +16,10 @@ import Data.Monoid
 data OutMsg =
     Nick !Text
   | User !Text !Text !Text !Text
+  | Pong !Text
+
+data InMsg =
+    Ping !Text
 
 data IrcInfo = IrcInfo {
     hostname :: String
@@ -29,12 +33,12 @@ connectIrc IrcInfo{..} = do
   sock <- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
   connect sock (addrAddress addr)
   connected <- isConnected sock
-  out <- atomically $ newTChan
+  (inChan, outChan) <- atomically $ (,) <$> newTChan <*> newTChan
   when connected $ do
     handle <- socketToHandle sock ReadWriteMode
-    mapM_ (sendMessage' out) initial
-    _writer <- forkIO (ircWriter out handle)
-    ircReader handle
+    mapM_ (sendMessage' outChan) initial
+    _writer <- forkIO (ircWriter outChan handle)
+    ircReader outChan inChan handle
     hClose handle
 
 initial :: [OutMsg]
@@ -53,13 +57,23 @@ ircWriter out handle = forever $ do
 renderMessage :: OutMsg -> Text
 renderMessage msg =
   case msg of
-       Nick nick -> T.unwords ["Nick", nick]
+       Nick nick -> T.unwords ["NICK", nick]
        User a b c d -> T.unwords ["USER", a, b, c, d]
+       Pong response -> T.unwords ["PONG", response]
 
-ircReader :: Handle -> IO ()
-ircReader h = forever $ do
-    line <- T.hGetLine h
-    print line
+parseLine :: Text -> Either Text InMsg
+parseLine line =
+  case T.words line of
+       ("PING":_user:response) -> Right $ Ping (T.unwords response)
+       _ -> Left line
+
+ircReader :: TChan OutMsg -> TChan InMsg -> Handle -> IO ()
+ircReader outChan inChan h = forever $ do
+    msg <- (parseLine . T.strip) <$> T.hGetLine h
+    case msg of
+         Right (Ping response) -> atomically $ writeTChan outChan (Pong response)
+         Right m -> atomically $ writeTChan inChan m
+         Left line -> T.putStrLn $ "Unparsed " <> line
 
 main :: IO ()
 main = do

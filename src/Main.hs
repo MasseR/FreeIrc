@@ -1,7 +1,11 @@
 {-# Language RecordWildCards #-}
 {-# Language OverloadedStrings #-}
+{-# Language GeneralizedNewtypeDeriving #-}
 module Main where
 
+import Control.Monad.Writer
+import Control.Monad.Reader
+-- import Control.Monad.State
 import Network.Socket hiding (recv, send)
 import System.IO (IOMode(..), hClose, Handle)
 import qualified Data.Text.IO as T
@@ -10,8 +14,7 @@ import Data.Text (Text)
 import Control.Monad (when, forever)
 import Control.Concurrent.STM.TChan
 import Control.Concurrent.STM (atomically)
-import Control.Concurrent (forkIO)
-import Data.Monoid
+import Control.Concurrent (forkIO, ThreadId)
 
 data OutMsg =
     Nick !Text
@@ -28,7 +31,23 @@ data InMsg =
 data IrcInfo = IrcInfo {
     hostname :: String
   , port :: Int
+  , hooks :: HookBuilder ()
   }
+
+type Hook = (TChan InMsg, TChan OutMsg)
+newtype HookBuilder a = HookBuilder {unHook :: WriterT [ThreadId] (ReaderT Hook IO) a}
+  deriving (Functor, Applicative, Monad, MonadWriter [ThreadId], MonadReader Hook, MonadIO)
+
+newHook :: (InMsg -> ReaderT (TChan OutMsg) IO ()) -> HookBuilder ()
+newHook f = do
+  original <- ask
+  (inChan, outChan) <- liftIO $ atomically $ duplicate original
+  t <- liftIO $ forkIO $ forever $ do
+    msg <- atomically $ readTChan inChan
+    runReaderT (f msg) outChan
+  tell [t]
+  where
+    duplicate (a,b) = (,) <$> dupTChan a <*> dupTChan b
 
 connectIrc :: IrcInfo -> IO ()
 connectIrc IrcInfo{..} = do
@@ -37,11 +56,12 @@ connectIrc IrcInfo{..} = do
   sock <- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
   connect sock (addrAddress addr)
   connected <- isConnected sock
-  (inChan, outChan) <- atomically $ (,) <$> newTChan <*> newTChan
+  chans@(inChan, outChan) <- atomically $ (,) <$> newTChan <*> newTChan
   when connected $ do
     handle <- socketToHandle sock ReadWriteMode
     mapM_ (sendMessage' outChan) initial
     _writer <- forkIO (ircWriter outChan handle)
+    _threads <- runReaderT (execWriterT $ unHook hooks) chans
     ircReader outChan inChan handle
     hClose handle
 

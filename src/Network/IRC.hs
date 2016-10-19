@@ -26,8 +26,6 @@ data InMsg =
 type OutChannel = TChan OutMsg
 type Hook = (TChan InMsg, TChan OutMsg)
 
-initial :: [OutMsg]
-initial = [Nick "Foobot", User "foo" "foo" "foo" "foo"]
 
 sendMessage' :: TChan OutMsg -> OutMsg -> IO ()
 sendMessage' out = atomically . writeTChan out

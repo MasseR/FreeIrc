@@ -18,7 +18,8 @@ import Control.Concurrent (forkIO, ThreadId)
 
 data IrcInfo = IrcInfo {
     hostname :: String
-  , port :: Int
+  , port :: !Int
+  , nick :: !Text
   , channels :: [Text]
   , hooks :: HookBuilder ()
   }
@@ -36,11 +37,14 @@ connectIrc IrcInfo{..} = do
   chans@(inChan, outChan) <- atomically $ (,) <$> newTChan <*> newTChan
   when connected $ do
     handle <- socketToHandle sock ReadWriteMode
-    mapM_ (sendMessage' outChan) (initial ++ [Join c | c <- channels])
+    mapM_ (sendMessage' outChan) (initial nick channels)
     _writer <- forkIO (ircWriter outChan handle)
     _threads <- runReaderT (execWriterT . unHook $ hooks) chans
     ircReader outChan inChan handle
     hClose handle
+
+initial :: Text -> [Text] -> [OutMsg]
+initial nick channels = [Nick nick, User "foo" "foo" "foo" "foo"] ++ [Join c | c <- channels]
 
 ircWriter :: TChan OutMsg -> Handle -> IO ()
 ircWriter out handle = forever $ do

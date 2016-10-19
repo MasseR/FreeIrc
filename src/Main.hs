@@ -14,4 +14,4 @@ echoHook _ = return ()
 
 main :: IO ()
 main = do
-  connectIrc (IrcInfo "localhost" 6667 ["#oo"] (newHook urlTitleHook))
+  connectIrc (IrcInfo "localhost" 6667 "Foobot" ["#oo"] (newHook urlTitleHook))

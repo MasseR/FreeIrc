@@ -17,6 +17,7 @@ executable wtfboths
   other-modules:       Network.IRC.Runner
                      , Network.IRC
                      , Hooks.Algebra
+                     , Hooks.Title
   main-is:             Main.hs
   default-language:    Haskell2010
   build-depends:       base >= 4.7 && < 5

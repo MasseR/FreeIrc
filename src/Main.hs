@@ -17,9 +17,12 @@ data OutMsg =
     Nick !Text
   | User !Text !Text !Text !Text
   | Pong !Text
+  deriving Show
 
 data InMsg =
     Ping !Text
+  | PrivMsg !Text !Text
+    deriving Show
 
 data IrcInfo = IrcInfo {
     hostname :: String
@@ -64,16 +67,20 @@ renderMessage msg =
 parseLine :: Text -> Either Text InMsg
 parseLine line =
   case T.words line of
-       ("PING":_user:response) -> Right $ Ping (T.unwords response)
+       ("PING":response) -> Right $ Ping (T.unwords response)
+       (from:"PRIVMSG":_target:msg) -> Right $ PrivMsg from (T.unwords msg)
        _ -> Left line
 
 ircReader :: TChan OutMsg -> TChan InMsg -> Handle -> IO ()
 ircReader outChan inChan h = forever $ do
-    msg <- (parseLine . T.strip) <$> T.hGetLine h
+    line <- T.strip <$> T.hGetLine h
+    let msg = parseLine line
+    print line
+    print msg
     case msg of
          Right (Ping response) -> atomically $ writeTChan outChan (Pong response)
          Right m -> atomically $ writeTChan inChan m
-         Left line -> T.putStrLn $ "Unparsed " <> line
+         Left err -> T.putStrLn $ "Unparsed " <> err
 
 main :: IO ()
 main = do

@@ -31,6 +31,7 @@ data InMsg =
 data IrcInfo = IrcInfo {
     hostname :: String
   , port :: Int
+  , channels :: [Text]
   , hooks :: HookBuilder ()
   }
 
@@ -59,14 +60,14 @@ connectIrc IrcInfo{..} = do
   chans@(inChan, outChan) <- atomically $ (,) <$> newTChan <*> newTChan
   when connected $ do
     handle <- socketToHandle sock ReadWriteMode
-    mapM_ (sendMessage' outChan) initial
+    mapM_ (sendMessage' outChan) (initial ++ [Join c | c <- channels])
     _writer <- forkIO (ircWriter outChan handle)
     _threads <- runReaderT (execWriterT $ unHook hooks) chans
     ircReader outChan inChan handle
     hClose handle
 
 initial :: [OutMsg]
-initial = [Nick "Foobot", User "foo" "foo" "foo" "foo", Join "#oo"]
+initial = [Nick "Foobot", User "foo" "foo" "foo" "foo"]
 
 sendMessage' :: TChan OutMsg -> OutMsg -> IO ()
 sendMessage' out = atomically . writeTChan out

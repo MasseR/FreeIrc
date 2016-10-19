@@ -22,7 +22,7 @@ data OutMsg =
 
 data InMsg =
     Ping !Text
-  | PrivMsg !Text !Text
+  | PrivMsg !Text !Text !Text
     deriving Show
 
 data IrcInfo = IrcInfo {
@@ -46,7 +46,7 @@ connectIrc IrcInfo{..} = do
     hClose handle
 
 initial :: [OutMsg]
-initial = [Nick "Foobot", User "foo" "foo" "foo" "foo"]
+initial = [Nick "Foobot", User "foo" "foo" "foo" "foo", Join "#oo"]
 
 sendMessage' :: TChan OutMsg -> OutMsg -> IO ()
 sendMessage' out = atomically . writeTChan out
@@ -70,8 +70,13 @@ parseLine :: Text -> Either Text InMsg
 parseLine line =
   case T.words line of
        ("PING":response) -> Right $ Ping (T.unwords response)
-       (from:"PRIVMSG":_target:msg) -> Right $ PrivMsg from (T.unwords msg)
+       (source:"PRIVMSG":target:msg) -> Right $ PrivMsg (parseNick source) target (parseMsg . T.unwords $ msg)
        _ -> Left line
+  where
+    parseNick source = case T.splitOn "!" . T.tail $ source of
+                              [nick,_] -> nick
+                              _ -> ""
+    parseMsg = T.tail
 
 ircReader :: TChan OutMsg -> TChan InMsg -> Handle -> IO ()
 ircReader outChan inChan h = forever $ do

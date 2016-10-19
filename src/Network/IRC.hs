@@ -3,20 +3,19 @@
 {-# Language DeriveFunctor #-}
 module Network.IRC where
 
-import Control.Monad.Writer
-import Control.Monad.Reader
 -- import Control.Monad.State
 import qualified Data.Text as T
 import Data.Text (Text)
 import Control.Concurrent.STM.TChan
 import Control.Concurrent.STM (atomically)
-import Control.Concurrent (ThreadId)
+import Data.Monoid
 
 data OutMsg =
     Nick !Text
   | User !Text !Text !Text !Text
   | Pong !Text
   | Join !Text
+  | Msg !Text !Text
   deriving Show
 
 data InMsg =
@@ -41,6 +40,7 @@ renderMessage msg =
        User a b c d -> T.unwords ["USER", a, b, c, d]
        Pong response -> T.unwords ["PONG", response]
        Join channel -> T.unwords ["JOIN", channel]
+       Msg target message -> T.unwords ["PRIVMSG", target, ":"<>message]
 
 parseLine :: Text -> Either Text InMsg
 parseLine line =

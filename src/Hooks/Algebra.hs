@@ -25,11 +25,11 @@ data DatabaseF x a =
 
 data IrcS a1 a2 a = A1 (a1 a) | A2 (a2 a) deriving Functor
 
-sendMessage :: OutMsg -> Free (IrcS IrcF WebF) ()
-sendMessage out = liftF (A1 (SendMessage out ()))
+sendMessage :: OutMsg -> Irc ()
+sendMessage out = Irc $ liftF (A1 (SendMessage out ()))
 
-fetch :: String -> Free (IrcS IrcF WebF) Payload
-fetch url = liftF (A2 (Fetch url id))
+fetch :: String -> Irc Payload
+fetch url = Irc $ liftF (A2 (Fetch url id))
 
 newtype Irc a = Irc { unIrc :: Free (IrcS IrcF WebF) a }
   deriving (Functor, Applicative, Monad)
@@ -39,5 +39,5 @@ runIrc = foldFree f . unIrc
   where
     f :: IrcS IrcF WebF a -> ReaderT OutChannel IO a
     f (A1 (SendMessage msg next)) = ask >>= \c -> liftIO (sendMessage' c msg) >> return next
-    f (A2 (Fetch url next)) = error "Not implemented"
+    f (A2 (Fetch _url _next)) = error "Not implemented"
 

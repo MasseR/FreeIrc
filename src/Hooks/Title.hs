@@ -31,11 +31,10 @@ parseTitle body = let
   title = T.strip . castString . innerText $ titleLst
   in if T.null title then Nothing else Just title
 
-
 handleWeb :: Text -> Irc (Maybe Text)
 handleWeb url = do
   Payload _ body <- fetch (T.unpack url)
-  return $ parseTitle body
+  return $ if LBS.length body < 64000 then parseTitle body else Nothing
 
 parseUrl :: Text -> Text -> Text
 parseUrl splitter msg = let

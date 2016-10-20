@@ -29,9 +29,9 @@ parseTitle :: ByteString -> Maybe Text
 parseTitle body = let
   tags = parseTags body :: [Tag ByteString]
   titleStr = "title" :: ByteString
-  titleLst = takeWhile (~/= TagClose titleStr) . dropWhile (~== TagOpen titleStr []) $ tags
-  title = T.strip . castString . innerText $ titleLst
-  in if T.null title then Nothing else Just title
+  titleLst = takeWhile (~/= TagClose titleStr) . dropWhile (~/= TagOpen titleStr []) $ tags
+  title = listToMaybe . T.lines . T.strip . castString . innerText $ titleLst
+  in if maybe False T.null title then Nothing else title
 
 handleWeb :: Text -> Irc (Maybe Text)
 handleWeb url = do

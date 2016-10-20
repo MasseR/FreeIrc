@@ -6,6 +6,7 @@ import Network.IRC
 import Hooks.Algebra
 import Hooks.Title
 import qualified Data.Text as T
+import System.Remote.Monitoring (forkServer)
 
 adminHook :: InMsg -> Irc ()
 adminHook (PrivMsg _nick _target msg) =

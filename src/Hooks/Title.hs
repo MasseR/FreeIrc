@@ -16,14 +16,16 @@ import Data.Char (isSpace)
 import Data.List (find)
 
 urlTitleHook :: InMsg -> Irc ()
-urlTitleHook (PrivMsg _nick target msg) =
+urlTitleHook (PrivMsg nick target msg) =
   case () of
        () | "http://" `T.isInfixOf` msg ->
-         maybe (return ()) (sendMessage . Msg target) =<< (handleWeb . parseUrl "http://" $ msg)
+         maybe (return ()) (sendMessage . Msg (respondTarget nick target)) =<< (handleWeb . parseUrl "http://" $ msg)
        () | "https://" `T.isInfixOf` msg ->
-         maybe (return ()) (sendMessage . Msg target) =<< (handleWeb . parseUrl "https://" $ msg)
+         maybe (return ()) (sendMessage . Msg (respondTarget nick target)) =<< (handleWeb . parseUrl "https://" $ msg)
        _ -> return ()
 urlTitleHook _ = return ()
+
+respondTarget nick target = if "#" `T.isPrefixOf` target then target else nick
 
 parseTitle :: ByteString -> Maybe Text
 parseTitle body = let

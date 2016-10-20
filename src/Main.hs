@@ -23,4 +23,9 @@ echoHook _ = return ()
 
 main :: IO ()
 main = do
-  connectIrc (IrcInfo "localhost" 6667 "Foobot" ["#oo"] (newHook urlTitleHook))
+  forkServer "localhost" 5555
+  defaultConf
+  
+
+
+defaultConf = connectIrc (IrcInfo "localhost" 6667 "FooBot" ["#oo""] (newHook urlTitleHook >> newHook adminHook))

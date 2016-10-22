@@ -12,7 +12,8 @@ import Network.Wreq hiding (Payload)
 import Data.CaseInsensitive (CI)
 import qualified Data.ByteString as BS (ByteString)
 import Data.Text (Text)
-import Data.Time
+import Data.Time (UTCTime)
+import qualified Data.Time as Time
 import Data.Acid.Url
 
 data IrcF a =
@@ -44,6 +45,15 @@ sendMessage out = Irc $ liftF (A1 (SendMessage out ()))
 fetch :: String -> Irc Payload
 fetch url = Irc $ liftF (A2 (Fetch url id))
 
+addUrl :: Text -> UrlRecord -> Irc ()
+addUrl url r = Irc $ liftF (A3 (Add url r ()))
+
+getUrl :: Text -> Irc [UrlRecord]
+getUrl url = Irc $ liftF (A3 (Get url id))
+
+getCurrentTime :: Irc UTCTime
+getCurrentTime = Irc $ liftF (A3 (GetCurrentTime id))
+
 newtype Irc a = Irc { unIrc :: Free (IrcS IrcF WebF UrlF) a }
   deriving (Functor, Applicative, Monad)
 
@@ -56,7 +66,7 @@ runFetchF (Fetch url next) = liftIO (fetchHandler url) >>= return . next
 runUrlF :: UrlF a -> ReaderT ReadState IO a
 runUrlF (Add url record next) = asks acidState >>= \a -> liftIO (update' a (AddUrl url record)) >> return next
 runUrlF (Get url next) = next <$> (asks acidState >>= \a -> liftIO (query' a (GetUrl url)))
-runUrlF (GetCurrentTime next) = next <$> liftIO getCurrentTime
+runUrlF (GetCurrentTime next) = next <$> liftIO Time.getCurrentTime
 
 runIrc :: Irc a -> ReaderT ReadState IO a
 runIrc = foldFree f . unIrc

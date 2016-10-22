@@ -68,7 +68,7 @@ newHook f = do
   (inChan, outChan) <- liftIO $ atomically $ duplicate original
   t <- liftIO $ forkIO $ forever $ do
     msg <- atomically $ readTChan inChan
-    void $ liftIO $ runReaderT (runIrc (f msg)) outChan
+    void $ forkIO $ runReaderT (runIrc (f msg)) outChan
   tell []
   where
     duplicate (a,b) = (,) <$> dupTChan a <*> dupTChan b

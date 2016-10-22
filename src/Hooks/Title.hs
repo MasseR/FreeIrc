@@ -1,4 +1,5 @@
 {-# Language OverloadedStrings #-}
+{-# Language RecordWildCards #-}
 module Hooks.Title where
 
 import Data.Text (Text)
@@ -14,16 +15,36 @@ import Text.HTML.TagSoup
 import Data.Maybe (listToMaybe)
 import Data.Char (isSpace)
 import Data.List (find)
+import Data.Acid.Url (UrlRecord(..))
+import Data.Monoid
 
 urlTitleHook :: InMsg -> Irc ()
 urlTitleHook (PrivMsg nick target msg) =
   case () of
-       () | "http://" `T.isInfixOf` msg ->
-         maybe (return ()) (sendMessage . Msg (respondTarget nick target)) =<< (handleWeb . parseUrl "http://" $ msg)
-       () | "https://" `T.isInfixOf` msg ->
-         maybe (return ()) (sendMessage . Msg (respondTarget nick target)) =<< (handleWeb . parseUrl "https://" $ msg)
+       () | "http://" `T.isInfixOf` msg -> handleTitle nick target "http://" msg
+       () | "https://" `T.isInfixOf` msg -> handleTitle nick target "https://" msg
        _ -> return ()
 urlTitleHook _ = return ()
+
+handleTitle :: Text -> Text -> Text -> Text -> Irc ()
+handleTitle nick target prefix msg = maybe (return ()) (respond url nick respondTo) =<< (handleWeb url)
+  where
+    url = parseUrl prefix msg
+    respondTo = respondTarget nick target
+
+respond :: Text -> Text -> Text -> Text -> Irc ()
+respond url nick respondTo title = do
+  now <- getCurrentTime
+  previous <- getUrl url
+
+  let r = UrlRecord url nick now
+  addUrl url r
+
+  sendMessage (Msg respondTo (format previous title))
+
+format :: [UrlRecord] -> Text -> Text
+format [] title = title
+format (UrlRecord{..}:_) title = title <> " -- last seen by " <> _nick <> " on " <> (T.pack (show _time))
 
 respondTarget :: Text -> Text -> Text
 respondTarget nick target = if "#" `T.isPrefixOf` target then target else nick

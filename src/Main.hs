@@ -8,6 +8,9 @@ import Hooks.Title
 import qualified Data.Text as T
 import System.Remote.Monitoring (forkServer)
 
+import qualified Config.Dyre as Dyre
+import Config.Dyre.Relaunch
+
 adminHook :: InMsg -> Irc ()
 adminHook (PrivMsg _nick _target msg) =
   case T.words msg of
@@ -20,12 +23,19 @@ echoHook (PrivMsg _nick target msg) = sendMessage (Msg target msg)
 echoHook _ = return ()
 
 
-
 main :: IO ()
-main = do
+main = dyre defaultConf
+
+realMain :: IrcInfo -> IO ()
+realMain conf = do
   forkServer "localhost" 5555
-  defaultConf
-  
+  connectIrc conf
+
+dyre = Dyre.wrapMain $ Dyre.defaultParams {
+    Dyre.projectName = "wtfbot"
+  , Dyre.realMain = realMain
+  }
 
 
-defaultConf = connectIrc (IrcInfo "localhost" 6667 "FooBot" ["#oo""] (newHook urlTitleHook >> newHook adminHook))
+
+defaultConf = IrcInfo "localhost" 6667 "FooBot" ["#oo"] (newHook urlTitleHook >> newHook adminHook)

@@ -25,6 +25,7 @@ urlTitleHook (PrivMsg nick target msg) =
        _ -> return ()
 urlTitleHook _ = return ()
 
+respondTarget :: Text -> Text -> Text
 respondTarget nick target = if "#" `T.isPrefixOf` target then target else nick
 
 parseTitle :: ByteString -> Maybe Text

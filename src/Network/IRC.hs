@@ -9,6 +9,7 @@ import Data.Text (Text)
 import Control.Concurrent.STM.TChan
 import Control.Concurrent.STM (atomically)
 import Data.Monoid
+import Data.Acid.Url
 
 data OutMsg =
     Nick !Text
@@ -24,7 +25,7 @@ data InMsg =
     deriving Show
 
 type OutChannel = TChan OutMsg
-type Hook = (TChan InMsg, TChan OutMsg)
+type Hook = (TChan InMsg, TChan OutMsg, AcidState UrlState)
 
 
 sendMessage' :: TChan OutMsg -> OutMsg -> IO ()

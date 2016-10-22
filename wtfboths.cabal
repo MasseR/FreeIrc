@@ -18,6 +18,7 @@ executable wtfboths
                      , Network.IRC
                      , Hooks.Algebra
                      , Hooks.Title
+                     , Data.Acid.Url
   main-is:             Main.hs
   default-language:    Haskell2010
   build-depends:       base >= 4.7 && < 5
@@ -39,3 +40,4 @@ executable wtfboths
                      , time
                      , acid-state
                      , safecopy
+                     , containers

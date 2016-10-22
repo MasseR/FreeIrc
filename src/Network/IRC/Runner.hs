@@ -15,6 +15,8 @@ import qualified Data.Text as T
 import Control.Concurrent.STM.TChan
 import Control.Concurrent.STM (atomically)
 import Control.Concurrent (forkIO, ThreadId)
+import Data.Acid.Url
+import Control.Exception (bracket)
 
 data IrcInfo = IrcInfo {
     hostname :: String
@@ -28,13 +30,16 @@ newtype HookBuilder a = HookBuilder {unHook :: WriterT [ThreadId] (ReaderT Hook 
   deriving (Functor, Applicative, Monad, MonadWriter [ThreadId], MonadReader Hook, MonadIO)
 
 connectIrc :: IrcInfo -> IO ()
-connectIrc IrcInfo{..} = do
+connectIrc i@IrcInfo{..} = newAcid hostname (connectIrc' i)
+
+connectIrc' :: IrcInfo -> AcidState UrlState -> IO ()
+connectIrc' IrcInfo{..} acid = do
   let hints = defaultHints
   addr:_ <- getAddrInfo (Just hints) (Just hostname) (Just (show port))
   sock <- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
   connect sock (addrAddress addr)
   connected <- isConnected sock
-  chans@(inChan, outChan) <- atomically $ (,) <$> newTChan <*> newTChan
+  chans@(inChan, outChan, _) <- (,,) <$> atomically newTChan <*> atomically newTChan <*> return acid
   when connected $ do
     handle <- socketToHandle sock ReadWriteMode
     mapM_ (sendMessage' outChan) (initial nick channels)
@@ -42,6 +47,11 @@ connectIrc IrcInfo{..} = do
     _threads <- runReaderT (execWriterT . unHook $ hooks) chans
     ircReader outChan inChan handle
     hClose handle
+
+newAcid :: String -> (AcidState UrlState -> IO ()) -> IO ()
+newAcid host f = bracket (openLocalStateFrom ("stateFromHost/"<>host) initialUrlState)
+                       (createCheckpointAndClose)
+                       (\acid -> f acid)
 
 initial :: Text -> [Text] -> [OutMsg]
 initial nick channels = [Nick nick, User "foo" "foo" "foo" "foo"] ++ [Join c | c <- channels]
@@ -64,11 +74,11 @@ ircReader outChan inChan h = forever $ do
 
 newHook :: (InMsg -> Irc ()) -> HookBuilder ()
 newHook f = do
-  original <- ask
+  original@(_,_,acid) <- ask
   (inChan, outChan) <- liftIO $ atomically $ duplicate original
-  t <- liftIO $ forkIO $ forever $ do
+  _t <- liftIO $ forkIO $ forever $ do
     msg <- atomically $ readTChan inChan
-    void $ forkIO $ runReaderT (runIrc (f msg)) outChan
+    void $ forkIO $ runReaderT (runIrc (f msg)) (ReadState outChan acid)
   tell []
   where
-    duplicate (a,b) = (,) <$> dupTChan a <*> dupTChan b
+    duplicate (a,b,_) = (,) <$> dupTChan a <*> dupTChan b

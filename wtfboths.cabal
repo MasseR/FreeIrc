@@ -19,6 +19,7 @@ executable wtfboths
                      , Hooks.Algebra
                      , Hooks.Title
                      , Config
+                     , Data.Acid.Url
   main-is:             Main.hs
   default-language:    Haskell2010
   build-depends:       base >= 4.7 && < 5
@@ -37,3 +38,7 @@ executable wtfboths
                      , lens
                      , case-insensitive
                      , ekg
+                     , time
+                     , acid-state
+                     , safecopy
+                     , containers

@@ -35,10 +35,10 @@ handleTitle nick target prefix msg = maybe (return ()) (respond url nick respond
 respond :: Text -> Text -> Text -> Text -> Irc ()
 respond url nick respondTo title = do
   now <- getCurrentTime
-  previous <- getUrl url
+  previous <- getUrl (respondTo <> url)
 
   let r = UrlRecord url nick now
-  addUrl url r
+  addUrl (respondTo <> url) r
 
   sendMessage (Msg respondTo (format previous title))
 

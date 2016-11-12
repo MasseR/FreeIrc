@@ -1,7 +1,12 @@
 {-# Language OverloadedStrings #-}
 {-# Language GeneralizedNewtypeDeriving #-}
 {-# Language DeriveFunctor #-}
-module Chat where
+module Chat (
+    MatchTree
+    , runMatcher
+    , respond
+    , build
+    ) where
 
 import Control.Monad.State
 import Control.Monad.Reader
@@ -17,7 +22,6 @@ import Data.Maybe (maybeToList)
 default (Text)
 
 data ActionF a = Respond Text a deriving (Functor)
-data VoidF a
 
 type Action f a = ReaderT SentenceState (Free (Sum ActionF f)) a
 type SentenceState = Map Text [Text]

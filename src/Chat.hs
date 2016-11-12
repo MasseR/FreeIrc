@@ -5,8 +5,6 @@ module Chat where
 
 import Control.Monad.State
 import Control.Monad.Reader
-import Control.Monad.Identity
-import Control.Monad.Writer hiding (Sum)
 import Data.Text (Text)
 import Data.Map.Strict (Map)
 import Data.Monoid ((<>))
@@ -103,8 +101,3 @@ evaluateMatcher sentence tree =
     let (f,s) = runState (unSentenceStateB (matchTree normalizedSentence tree)) M.empty
         normalizedSentence = Normalized . T.words . T.toUpper $ sentence
     in runReaderT (sequence_ f) s
-
-interpretDebug :: Sum ActionF Identity a -> Writer [Text] a
-interpretDebug (InL (Respond s next)) = tell [s] >> return next
-interpretDebug _ = error "asd"
-

@@ -23,28 +23,40 @@ type Action f a = ReaderT SentenceState (Free (Sum ActionF f)) a
 type SentenceState = Map Text [Text]
 
 
+-- |Respond to the client
 respond :: Functor f => Text -> Action f ()
 respond r = liftF (InL (Respond r ()))
 
 
--- inspired by aiml
 newtype Normalized = Normalized [Text]
 newtype SentenceStateB a = SentenceStateB {unSentenceStateB :: State (Map Text [Text]) a}
     deriving (Functor, Applicative, Monad, MonadState (Map Text [Text]))
-data Matcher = WordMatch !Text
-             | Star
-             | NamedStar !Text
+
+-- |Describe different matching types
+data Matcher = WordMatch !Text -- ^ The most basic matcher, matches the word under cursor
+             | Star -- ^ Matches any word and is recorded under '*' in the state
+             | NamedStar !Text -- ^ Matches any word and is recorded under the name given in constructor
              deriving (Show, Eq, Ord)
 
+{-|
+MatchTree f is the foundation for matching content. It is basically a trie,
+with matchers as the leafs. The leafs should be tried against normalized words.
+|-}
 data MatchTree f = Root [MatchTree f]
                  | Leaf !Matcher [MatchTree f] (Maybe (Action f ()))
 
+-- |Match a matcher against a normalized word.
 match :: Matcher -> Text -> SentenceStateB Bool
 match (WordMatch x) w | x == w = return True
                       | otherwise = return False
 match Star w = modify (M.insertWith (<>) "*" [w]) >> return True
 match (NamedStar n) w = modify (M.insertWith (<>) n [w]) >> return True
 
+{-|
+Combine tries together. The trie in the second argument is tried against all
+the tries in the first argument. If there is a match, the subtrees are joined
+recursively, otherwise the new trie is prepended to the list of tries.
+|-}
 add :: Functor f => [MatchTree f] -> MatchTree f -> [MatchTree f]
 add [] l = [l]
 add (Root cs : _) l = [Root (add cs l)]
@@ -53,18 +65,11 @@ add (o@(Leaf w cs f) : xs) l@(Leaf w' cs' _)
     | otherwise = o : add xs l
 add l (Root cs) = concatMap (add l) cs
 
-findM :: Monad m => (a -> m Bool) -> [a] -> m (Maybe a)
-findM f = go
-    where
-        go [] = return Nothing
-        go (x:xs) = f x >>= \x' -> if x' then return (Just x) else go xs
 
-anyM :: Monad m => (a -> m Bool) -> [a] -> m Bool
-anyM f = go
-    where
-        go [] = return False
-        go (x:xs) = f x >>= \x' -> if x' then return True else go xs
-
+{-|
+Match a normalized wordlist against a ready tree. Return a list of actions
+while building the sentence state at the same time.
+|-}
 matchTree :: Normalized -> MatchTree f -> SentenceStateB [Action f ()]
 matchTree (Normalized xs) = go xs
     where
@@ -84,6 +89,12 @@ build ws =
          _ -> Root []
 
 
+{-|
+Build a tree *spine* from a sentence.
+
+The given sentence is uppercased and parsed for some tokens. Tokens '*' and
+':variablename:' are understood, creating Star and NamedStar respectively
+|-}
 fromText :: Action f () -> Text -> MatchTree f
 fromText f = Root . addAction . go . T.words . T.toUpper
     where
@@ -96,8 +107,9 @@ fromText f = Root . addAction . go . T.words . T.toUpper
         addAction [Leaf w cs _] = [Leaf w (addAction cs) Nothing]
         addAction x = x
 
-evaluateMatcher :: Functor f => Text -> MatchTree f -> Free (Sum ActionF f) ()
-evaluateMatcher sentence tree =
+-- |Run the matcher against input text. The text is normalized.
+runMatcher :: Functor f => Text -> MatchTree f -> Free (Sum ActionF f) ()
+runMatcher sentence tree =
     let (f,s) = runState (unSentenceStateB (matchTree normalizedSentence tree)) M.empty
         normalizedSentence = Normalized . T.words . T.toUpper $ sentence
     in runReaderT (sequence_ f) s

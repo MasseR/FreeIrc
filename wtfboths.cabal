@@ -20,6 +20,7 @@ executable wtfboths
                      , Hooks.Title
                      , Config
                      , Data.Acid.Url
+                     , Chat
   main-is:             Main.hs
   default-language:    Haskell2010
   build-depends:       base >= 4.7 && < 5

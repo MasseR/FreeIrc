@@ -23,7 +23,7 @@ data IrcF a =
 type Header = [(CI BS.ByteString, BS.ByteString)]
 data Payload = Payload Header ByteString deriving Show
 data WebF a =
-  Fetch String (Payload -> a)
+  Fetch Options String (Payload -> a)
   deriving Functor
 
 data UrlF a =
@@ -43,7 +43,10 @@ sendMessage :: OutMsg -> Irc ()
 sendMessage out = Irc $ liftF (A1 (SendMessage out ()))
 
 fetch :: String -> Irc Payload
-fetch url = Irc $ liftF (A2 (Fetch url id))
+fetch url = fetchWith defaults url
+
+fetchWith :: Options -> String -> Irc Payload
+fetchWith opts url = Irc $ liftF (A2 (Fetch opts url id))
 
 addUrl :: Text -> UrlRecord -> Irc ()
 addUrl url r = Irc $ liftF (A3 (Add url r ()))
@@ -61,7 +64,7 @@ runIrcF :: IrcF a -> ReaderT ReadState IO a
 runIrcF (SendMessage msg next) = asks outChannel >>= \c -> liftIO (sendMessage' c msg) >> return next
 
 runFetchF :: WebF a -> ReaderT ReadState IO a
-runFetchF (Fetch url next) = liftIO (fetchHandler url) >>= return . next
+runFetchF (Fetch opts url next) = liftIO (fetchHandler opts url) >>= return . next
 
 runUrlF :: UrlF a -> ReaderT ReadState IO a
 runUrlF (Add url record next) = asks acidState >>= \a -> liftIO (update' a (AddUrl url record)) >> return next
@@ -76,7 +79,7 @@ runIrc = foldFree f . unIrc
     f (A2 op) = runFetchF op
     f (A3 op) = runUrlF op
 
-fetchHandler :: String -> IO Payload
-fetchHandler url = do
-  r <- get url
+fetchHandler :: Options -> String -> IO Payload
+fetchHandler opts url = do
+  r <- getWith opts url
   return $ Payload (r ^. responseHeaders) (r ^. responseBody)

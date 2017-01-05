@@ -27,7 +27,6 @@ executable wtfboths
                      , text
                      , bytestring
                      , stm
-                     , haskeline
                      , wreq
                      , tagsoup
                      , lens

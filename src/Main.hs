@@ -17,9 +17,10 @@ import Network.IRC
 import qualified Data.Text as T
 
 data ConnectionConf = ConnectionConf { hostname :: Text
-                                     , port :: Int} deriving (Generic, Show)
+                                     , port :: Int
+                                     , channels :: [Text]} deriving (Generic, Show)
 data HookConf = HookConf { darkskyApiKey :: String } deriving (Generic, Show)
-data Configuration = Configuration { connection :: ConnectionConf
+data Configuration = Configuration { connection :: [ConnectionConf]
                                    , hooksConf :: HookConf
                                    } deriving (Generic, Show)
 

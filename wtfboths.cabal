@@ -37,7 +37,6 @@ executable wtfboths
                      , dyre
                      , lens
                      , case-insensitive
-                     , ekg
                      , time
                      , acid-state
                      , safecopy

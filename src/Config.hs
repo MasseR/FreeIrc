@@ -6,7 +6,6 @@ import Network.IRC
 import Hooks.Algebra
 import Hooks.Title
 import qualified Data.Text as T
-import System.Remote.Monitoring (forkServer)
 
 import qualified Config.Dyre as Dyre
 import Config.Dyre.Relaunch
@@ -26,7 +25,6 @@ echoHook _ = return ()
 
 realMain :: IrcInfo -> IO ()
 realMain conf = do
-  forkServer "localhost" 5555
   connectIrc conf
 
 dyre = Dyre.wrapMain $ Dyre.defaultParams {

@@ -5,7 +5,8 @@ module Network.IRC.Runner where
 
 import Hooks.Algebra
 import Network.IRC
-import Network.Socket hiding (recv, send)
+import Network.Socket hiding (recv, send, connect)
+import Network.Simple.TCP
 import Control.Monad.Writer
 import Control.Monad.Reader
 import Data.Text (Text)
@@ -34,19 +35,14 @@ connectIrc i@IrcInfo{..} = newAcid hostname (connectIrc' i)
 
 connectIrc' :: IrcInfo -> AcidState UrlState -> IO ()
 connectIrc' IrcInfo{..} acid = do
-  let hints = defaultHints
-  addr:_ <- getAddrInfo (Just hints) (Just hostname) (Just (show port))
-  sock <- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
-  connect sock (addrAddress addr)
-  connected <- isConnected sock
-  chans@(inChan, outChan, _) <- (,,) <$> atomically newTChan <*> atomically newTChan <*> return acid
-  when connected $ do
-    handle <- socketToHandle sock ReadWriteMode
-    mapM_ (sendMessage' outChan) (initial nick channels)
-    _writer <- forkIO (ircWriter outChan handle)
-    _threads <- runReaderT (execWriterT . unHook $ hooks) chans
-    ircReader outChan inChan handle
-    hClose handle
+    chans@(inChan, outChan, _) <- (,,) <$> atomically newTChan <*> atomically newTChan <*> return acid
+    connect hostname (show port) $ \(sock, addr) -> do
+        handle <- socketToHandle sock ReadWriteMode
+        mapM_ (sendMessage' outChan) (initial nick channels)
+        forkIO (ircWriter outChan handle)
+        runReaderT (execWriterT . unHook $ hooks) chans
+        ircReader outChan inChan handle
+        hClose handle
 
 newAcid :: String -> (AcidState UrlState -> IO ()) -> IO ()
 newAcid host f = bracket (openLocalStateFrom ("stateFromHost/"<>host) initialUrlState)

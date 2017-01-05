@@ -5,10 +5,9 @@ import Network.IRC.Runner
 import Network.IRC
 import Hooks.Algebra
 import Hooks.Title
+import Hooks.Weather
 import qualified Data.Text as T
 
-import qualified Config.Dyre as Dyre
-import Config.Dyre.Relaunch
 
 adminHook :: InMsg -> Irc ()
 adminHook (PrivMsg _nick _target msg) =
@@ -23,16 +22,11 @@ echoHook _ = return ()
 
 
 
-realMain :: IrcInfo -> IO ()
-realMain conf = do
+defaultMain :: IrcInfo -> IO ()
+defaultMain conf = do
   connectIrc conf
 
-dyre = Dyre.wrapMain $ Dyre.defaultParams {
-    Dyre.projectName = "wtfbot"
-  , Dyre.realMain = realMain
-  }
 
-
-
-defaultConf = IrcInfo "localhost" 6667 "FooBot" ["#oo"] (newHook urlTitleHook >> newHook adminHook)
+defaultConf :: IrcInfo
+defaultConf = IrcInfo "localhost" 6667 "FooBot" ["#oo"] (return ())
 

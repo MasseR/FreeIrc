@@ -35,7 +35,6 @@ executable wtfboths
                      , mtl
                      , transformers
                      , free
-                     , dyre
                      , lens
                      , case-insensitive
                      , time
@@ -44,3 +43,4 @@ executable wtfboths
                      , containers
                      , aeson
                      , lens-aeson
+                     , yaml

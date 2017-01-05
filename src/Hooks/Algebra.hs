@@ -12,6 +12,7 @@ import Network.Wreq hiding (Payload)
 import Data.CaseInsensitive (CI)
 import qualified Data.ByteString as BS (ByteString)
 import Data.Text (Text)
+import qualified Data.Text as T
 import Data.Time (UTCTime)
 import qualified Data.Time as Time
 import Data.Acid.Url
@@ -83,3 +84,10 @@ fetchHandler :: Options -> String -> IO Payload
 fetchHandler opts url = do
   r <- getWith opts url
   return $ Payload (r ^. responseHeaders) (r ^. responseBody)
+
+
+respondTarget :: Text -> Text -> Text
+respondTarget nick target = if "#" `T.isPrefixOf` target then target else nick
+
+respondTo :: Text -> Text -> Text -> Irc ()
+respondTo nick trg msg = sendMessage (Msg (respondTarget nick trg) msg)

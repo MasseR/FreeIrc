@@ -46,8 +46,6 @@ format :: [UrlRecord] -> Text -> Text
 format [] title = title
 format (UrlRecord{..}:_) title = title <> " -- last seen by " <> _nick <> " on " <> (T.pack (show _time))
 
-respondTarget :: Text -> Text -> Text
-respondTarget nick target = if "#" `T.isPrefixOf` target then target else nick
 
 parseTitle :: ByteString -> Maybe Text
 parseTitle body = let

@@ -15,7 +15,7 @@ import Network.Wreq
 import Network.IRC
 import Text.Printf
 
-data Coord = Coord {_latitude :: Double, _longitude :: Double}
+data Coord = Coord {_latitude :: Double, _longitude :: Double} deriving Show
 data Weather = Weather { _temperature :: Double } deriving Show
 
 nominatim :: Text -> Irc (Maybe Coord)
@@ -32,11 +32,11 @@ nominatim city = do
 
 fetchWeather :: ApiKey -> Coord -> Irc (Maybe Weather)
 fetchWeather (ApiKey apiKey) Coord{..} = do
-    let url = printf "https://api.darksky.net/forecast/%s/%d,%d" apiKey _latitude _longitude :: String
+    let url = printf "https://api.darksky.net/forecast/%s/%f,%f" apiKey _latitude _longitude :: String
     Payload _ bs <- fetch url
     let weather = Weather <$> fmap fahrenheitToCelcius (datapoint json "temperature")
         json = decode bs :: Maybe Value
-    return Nothing
+    return weather
     where
         datapoint json k = json ^? _Just . key "currently" . key k . _Number
         fahrenheitToCelcius f = fromRational $ toRational (f - 32) / 1.8

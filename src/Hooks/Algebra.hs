@@ -1,14 +1,24 @@
 {-# Language DeriveFunctor #-}
+{-# Language TypeFamilies #-}
 {-# Language GeneralizedNewtypeDeriving #-}
 {-# Language OverloadedStrings #-}
+{-# Language ScopedTypeVariables #-}
+{-# Language FlexibleContexts #-}
+{-# Language FlexibleInstances #-}
+{-# Language DataKinds #-}
+{-# Language TypeOperators #-}
+{-# Language PartialTypeSignatures #-}
+{-# Language PolyKinds #-}
+{-# Language MultiParamTypeClasses #-}
 module Hooks.Algebra where
 
+import GHC.TypeLits
 import Control.Monad.Free
 import Control.Monad.Reader
 import Network.IRC
 import Data.ByteString.Lazy (ByteString)
 import Control.Lens ((^.))
-import Network.Wreq hiding (Payload)
+import Network.Wreq hiding (Payload, Proxy)
 import Data.CaseInsensitive (CI)
 import qualified Data.ByteString as BS (ByteString)
 import Data.Text (Text)
@@ -16,6 +26,8 @@ import qualified Data.Text as T
 import Data.Time (UTCTime)
 import qualified Data.Time as Time
 import Data.Acid.Url
+import Data.Functor.Sum
+import Data.Proxy
 
 data IrcF a =
   SendMessage OutMsg a
@@ -91,3 +103,61 @@ respondTarget nick target = if "#" `T.isPrefixOf` target then target else nick
 
 respondTo :: Text -> Text -> Text -> Irc ()
 respondTo nick trg msg = sendMessage (Msg (respondTarget nick trg) msg)
+
+data CloudApiF a = PutFile String String a
+                 | GetFile String (String -> a)
+                 deriving (Functor)
+
+data LogF a = Log String a
+            deriving (Functor)
+
+class Interpreted (f :: * -> *) where
+    interpret :: MonadIO m => f a -> m a
+
+instance Interpreted f => Interpreted (Free f) where
+    interpret f = foldFree interpret f
+
+instance (Interpreted f, Interpreted g) => Interpreted (Sum f g) where
+    interpret (InL f) = interpret f
+    interpret (InR g) = interpret g
+
+instance Interpreted LogF where
+    interpret (Log x next) = liftIO (putStrLn x) >> return next
+
+instance Interpreted CloudApiF where
+    interpret (PutFile name content next) = liftIO (putStrLn $ "Putting " ++ name) >> return next
+    interpret (GetFile name next) = liftIO (putStrLn $ "Getting " ++ name) >> return (next "asd")
+
+instance Interpreted UrlF where
+    interpret _ = error "Not implemented"
+
+class SumBuilder (x :: * -> *) (f :: [* -> *]) where
+    type Eff f :: * -> *
+    autoHoist :: x a -> Proxy f -> Free (Eff f) a
+
+instance SumBuilder (Free f) ('[f] :: [* -> *]) where
+    type Eff '[f] = f
+    autoHoist f _ = f
+
+instance (Functor f, Functor (Eff (g ': xs))) => SumBuilder (Free f) ((f :: * -> *) ': g ': xs) where
+    type Eff (f ': g ': xs) = Sum f (Eff (g ': xs))
+    autoHoist f _ = hoistFree InL f
+
+instance (Functor f, Functor (Eff (g ': xs)), SumBuilder (Free g) (g ': xs)) => SumBuilder (Free g) (f ': g ': xs) where
+    type Eff (f ': g ': xs) = Sum f (Eff (g ': xs))
+    autoHoist g _ = hoistFree InR (autoHoist g p)
+        where
+            p :: Proxy (g ': xs)
+            p = Proxy
+
+-- class Hoister f xs where
+--     autoHoist :: Free f a -> Proxy xs -> Free (Eff xs) a
+--
+-- instance (Functor f, Functor (Eff (f ': xs))) => Hoister f (f ': xs) where
+--     autoHoist f _ = hoistFree InL f
+
+
+logger :: String -> Free LogF ()
+logger str = liftF (Log str ())
+hoistedLogger :: String -> Free (Sum LogF (Sum UrlF CloudApiF)) ()
+hoistedLogger str = hoistFree InL (logger str)

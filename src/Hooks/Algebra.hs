@@ -104,13 +104,6 @@ respondTarget nick target = if "#" `T.isPrefixOf` target then target else nick
 respondTo :: Text -> Text -> Text -> Irc ()
 respondTo nick trg msg = sendMessage (Msg (respondTarget nick trg) msg)
 
-data CloudApiF a = PutFile String String a
-                 | GetFile String (String -> a)
-                 deriving (Functor)
-
-data LogF a = Log String a
-            deriving (Functor)
-
 class Interpreted (f :: * -> *) where
     interpret :: MonadIO m => f a -> m a
 
@@ -149,15 +142,3 @@ instance (Functor f, Functor (Eff (g ': xs)), SumBuilder (Free g) (g ': xs)) => 
         where
             p :: Proxy (g ': xs)
             p = Proxy
-
--- class Hoister f xs where
---     autoHoist :: Free f a -> Proxy xs -> Free (Eff xs) a
---
--- instance (Functor f, Functor (Eff (f ': xs))) => Hoister f (f ': xs) where
---     autoHoist f _ = hoistFree InL f
-
-
-logger :: String -> Free LogF ()
-logger str = liftF (Log str ())
-hoistedLogger :: String -> Free (Sum LogF (Sum UrlF CloudApiF)) ()
-hoistedLogger str = hoistFree InL (logger str)

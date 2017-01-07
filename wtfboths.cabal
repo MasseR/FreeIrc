@@ -19,6 +19,7 @@ executable wtfboths
                      , Hooks.Algebra
                      , Hooks.Title
                      , Hooks.Weather
+                     , Hooks.AutoFree
                      , Config
                      , Data.Acid.Url
   main-is:             Main.hs

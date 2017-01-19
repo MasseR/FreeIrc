@@ -20,7 +20,7 @@ import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Time (UTCTime)
 import qualified Data.Time as Time
-import Data.Acid.Database
+import qualified Data.Acid.Database as DB
 
 data IrcF a =
   SendMessage OutMsg a
@@ -32,17 +32,18 @@ data WebF a =
   Fetch Options String (Payload -> a)
   deriving Functor
 
-data UrlF a =
-    Add Text UrlRecord a
-  | Get Text ([UrlRecord] -> a)
-  | GetCurrentTime (UTCTime -> a)
+data UrlF a = Add Text DB.UrlRecord a
+            | Get Text ([DB.UrlRecord] -> a)
+            | GetCurrentTime (UTCTime -> a)
+            | PlusOne Text a
+            | TopOnes Int ([Text] -> a)
   deriving Functor
 
 data IrcS a1 a2 a3 a = A1 (a1 a) | A2 (a2 a) | A3 (a3 a) deriving Functor
 
 data ReadState = ReadState {
     outChannel :: OutChannel
-  , acidState :: AcidState IrcState
+  , acidState :: DB.AcidState DB.IrcState
   }
 
 sendMessage :: OutMsg -> Irc ()
@@ -54,11 +55,17 @@ fetch url = fetchWith defaults url
 fetchWith :: Options -> String -> Irc Payload
 fetchWith opts url = Irc $ liftF (A2 (Fetch opts url id))
 
-addUrl :: Text -> UrlRecord -> Irc ()
+addUrl :: Text -> DB.UrlRecord -> Irc ()
 addUrl url r = Irc $ liftF (A3 (Add url r ()))
 
-getUrl :: Text -> Irc [UrlRecord]
+getUrl :: Text -> Irc [DB.UrlRecord]
 getUrl url = Irc $ liftF (A3 (Get url id))
+
+plusOne :: Text -> Irc ()
+plusOne nick = Irc $ liftF (A3 (PlusOne nick ()))
+
+topOnes :: Int -> Irc [Text]
+topOnes n = Irc $ liftF (A3 (TopOnes n id))
 
 getCurrentTime :: Irc UTCTime
 getCurrentTime = Irc $ liftF (A3 (GetCurrentTime id))
@@ -73,9 +80,11 @@ runFetchF :: WebF a -> ReaderT ReadState IO a
 runFetchF (Fetch opts url next) = liftIO (fetchHandler opts url) >>= return . next
 
 runUrlF :: UrlF a -> ReaderT ReadState IO a
-runUrlF (Add url record next) = asks acidState >>= \a -> liftIO (update' a (AddUrl url record)) >> return next
-runUrlF (Get url next) = next <$> (asks acidState >>= \a -> liftIO (query' a (GetUrl url)))
+runUrlF (Add url record next) = asks acidState >>= \a -> liftIO (DB.update' a (DB.AddUrl url record)) >> return next
+runUrlF (Get url next) = next <$> (asks acidState >>= \a -> liftIO (DB.query' a (DB.GetUrl url)))
 runUrlF (GetCurrentTime next) = next <$> liftIO Time.getCurrentTime
+runUrlF (TopOnes n next) = next <$> (asks acidState >>= \a -> liftIO (DB.query' a (DB.TopOnes n)))
+runUrlF (PlusOne nick next) = (asks acidState >>= \a -> liftIO (DB.update' a (DB.PlusOne nick))) >> pure next
 
 runIrc :: Irc a -> ReaderT ReadState IO a
 runIrc = foldFree f . unIrc

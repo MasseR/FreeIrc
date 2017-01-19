@@ -13,6 +13,8 @@ module Data.Acid.Database
   , UrlRecord(..)
   , AddUrl(..)
   , GetUrl(..)
+  , TopOnes(..)
+  , PlusOne(..)
   , initialIrcState
 )
 where
@@ -31,6 +33,8 @@ import Data.Time
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as M
 import Data.Monoid
+import Data.List (sortBy)
+import Data.Ord (comparing)
 import Control.Lens
 import Data.Maybe (fromMaybe)
 
@@ -68,5 +72,12 @@ addUrl url r = modifying urls (M.insertWith (<>) url [r])
 getUrl :: Text -> Query IrcState [UrlRecord]
 getUrl url = view (urls . at url . non [])
 
-$(makeAcidic ''IrcState ['addUrl, 'getUrl])
+plusOne :: Nick -> Update IrcState ()
+plusOne nick = modifying plusOnes (M.insertWith (+) nick 1)
+
+topOnes :: Int -> Query IrcState [Nick]
+topOnes n = f <$> view plusOnes
+  where f = take n . map fst . sortBy (flip (comparing snd)) . M.toList
+
+$(makeAcidic ''IrcState ['addUrl, 'getUrl, 'plusOne, 'topOnes])
 

@@ -20,6 +20,7 @@ executable wtfboths
                      , Hooks.Title
                      , Hooks.Weather
                      , Hooks.AutoFree
+                     , Hooks.PlusOne
                      , Config
                      , Data.Acid.Database
   main-is:             Main.hs

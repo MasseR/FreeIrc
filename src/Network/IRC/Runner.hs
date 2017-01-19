@@ -16,7 +16,7 @@ import qualified Data.Text as T
 import Control.Concurrent.STM.TChan
 import Control.Concurrent.STM (atomically)
 import Control.Concurrent (forkIO, ThreadId)
-import Data.Acid.Url
+import Data.Acid.Database
 import Control.Exception (bracket)
 
 data IrcInfo = IrcInfo {
@@ -33,7 +33,7 @@ newtype HookBuilder a = HookBuilder {unHook :: WriterT [ThreadId] (ReaderT Hook 
 connectIrc :: IrcInfo -> IO ()
 connectIrc i@IrcInfo{..} = newAcid hostname (connectIrc' i)
 
-connectIrc' :: IrcInfo -> AcidState UrlState -> IO ()
+connectIrc' :: IrcInfo -> AcidState IrcState -> IO ()
 connectIrc' IrcInfo{..} acid = do
     chans@(inChan, outChan, _) <- (,,) <$> atomically newTChan <*> atomically newTChan <*> return acid
     connect hostname (show port) $ \(sock, addr) -> do
@@ -44,8 +44,8 @@ connectIrc' IrcInfo{..} acid = do
         ircReader outChan inChan handle
         hClose handle
 
-newAcid :: String -> (AcidState UrlState -> IO ()) -> IO ()
-newAcid host f = bracket (openLocalStateFrom ("stateFromHost/"<>host) initialUrlState)
+newAcid :: String -> (AcidState IrcState -> IO ()) -> IO ()
+newAcid host f = bracket (openLocalStateFrom ("stateFromHost/"<>host) initialIrcState)
                        (createCheckpointAndClose)
                        (\acid -> f acid)
 

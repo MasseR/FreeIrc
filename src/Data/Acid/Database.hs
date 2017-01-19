@@ -2,10 +2,10 @@
 {-# Language DeriveDataTypeable #-}
 {-# Language GeneralizedNewtypeDeriving #-}
 {-# Language TypeFamilies #-}
-module Data.Acid.Url
+module Data.Acid.Database
 (
     AcidState
-  , UrlState
+  , IrcState
   , createCheckpointAndClose
   , query'
   , update'
@@ -13,7 +13,7 @@ module Data.Acid.Url
   , UrlRecord(..)
   , AddUrl(..)
   , GetUrl(..)
-  , initialUrlState
+  , initialIrcState
 )
 where
 
@@ -40,22 +40,23 @@ data UrlRecord = UrlRecord {
   , _time :: !UTCTime
   } deriving (Eq, Ord, Show, Read, Data, Typeable)
 
-data UrlState = UrlState {
+data IrcState = IrcState {
   _urls :: Map Text [UrlRecord]
   } deriving (Eq, Ord, Show, Read, Data, Typeable)
 
-initialUrlState :: UrlState
-initialUrlState = UrlState mempty
+initialIrcState :: IrcState
+initialIrcState = IrcState mempty
 
 $(makeLenses ''UrlRecord)
-$(makeLenses ''UrlState)
+$(makeLenses ''IrcState)
 $(deriveSafeCopy 0 'base ''UrlRecord)
-$(deriveSafeCopy 0 'base ''UrlState)
+$(deriveSafeCopy 0 'base ''IrcState)
 
-addUrl :: Text -> UrlRecord -> Update UrlState ()
+addUrl :: Text -> UrlRecord -> Update IrcState ()
 addUrl url r = modifying urls (M.insertWith (<>) url [r])
 
-getUrl :: Text -> Query UrlState [UrlRecord]
+getUrl :: Text -> Query IrcState [UrlRecord]
 getUrl url = view (urls . at url . non [])
 
-$(makeAcidic ''UrlState ['addUrl, 'getUrl])
+$(makeAcidic ''IrcState ['addUrl, 'getUrl])
+

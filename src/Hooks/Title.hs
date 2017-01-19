@@ -15,7 +15,7 @@ import Text.HTML.TagSoup
 import Data.Maybe (listToMaybe)
 import Data.Char (isSpace)
 import Data.List (find)
-import Data.Acid.Url (UrlRecord(..))
+import Data.Acid.Database (UrlRecord(..))
 import Data.Monoid
 
 urlTitleHook :: InMsg -> Irc ()

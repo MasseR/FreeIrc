@@ -20,7 +20,7 @@ import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Time (UTCTime)
 import qualified Data.Time as Time
-import Data.Acid.Url
+import Data.Acid.Database
 
 data IrcF a =
   SendMessage OutMsg a
@@ -42,7 +42,7 @@ data IrcS a1 a2 a3 a = A1 (a1 a) | A2 (a2 a) | A3 (a3 a) deriving Functor
 
 data ReadState = ReadState {
     outChannel :: OutChannel
-  , acidState :: AcidState UrlState
+  , acidState :: AcidState IrcState
   }
 
 sendMessage :: OutMsg -> Irc ()

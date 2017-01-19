@@ -22,4 +22,7 @@ plusOneHook :: InMsg -> Irc ()
 plusOneHook (PrivMsg nick target msg) =
   case T.words msg of
        ("!lambdabot":nick:"+1":_) -> plusOne nick >> respondTo nick target  "+1"
+       ("!top":n:[]) -> topOnes (read $ T.unpack n) >>= respondTo nick target . format
        _ -> return ()
+  where
+    format = T.intercalate ", "

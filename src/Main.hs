@@ -13,6 +13,7 @@ import Network.IRC.Runner (HookBuilder, newHook, IrcInfo(..))
 import Hooks.Algebra
 import Hooks.Title
 import Hooks.Weather
+import Hooks.PlusOne
 import Network.IRC
 import qualified Data.Text as T
 
@@ -47,6 +48,7 @@ myHooks :: HookConf -> HookBuilder ()
 myHooks HookConf{..} = do
     newHook urlTitleHook
     newHook adminHook
+    newHook plusOneHook
     newHook $ weatherHook $ ApiKey darkskyApiKey
 
 main :: IO ()

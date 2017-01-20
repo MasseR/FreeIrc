@@ -10,11 +10,13 @@ import Data.Aeson (FromJSON, ToJSON)
 import GHC.Generics (Generic)
 import Data.Text (Text)
 import Network.IRC.Runner (HookBuilder, newHook, IrcInfo(..))
+import qualified Network.IRC.Runner as IRC
 import Hooks.Algebra
 import Hooks.Title
 import Hooks.Weather
 import Hooks.PlusOne
 import Network.IRC
+import qualified Network.IRC as IRC
 import qualified Data.Text as T
 
 data ConnectionConf = ConnectionConf { hostname :: Text
@@ -54,5 +56,7 @@ myHooks HookConf{..} = do
 main :: IO ()
 main = do
     conf <- loadYamlSettings ["config/irc.yaml"] [] ignoreEnv :: IO Configuration
+    -- XXX: Use control.concurrent.async and list comprehensions to start
+    -- multiple connections based on ConnectionConf
     defaultMain defaultConf {hooks = myHooks $ hooksConf conf}
 

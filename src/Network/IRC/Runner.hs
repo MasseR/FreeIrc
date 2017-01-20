@@ -15,7 +15,7 @@ import qualified Data.Text.IO as T
 import qualified Data.Text as T
 import Control.Concurrent.STM.TChan
 import Control.Concurrent.STM (atomically)
-import Control.Concurrent (forkIO, ThreadId)
+import Control.Concurrent (forkIO, ThreadId, threadDelay)
 import Data.Acid.Database
 import Control.Exception (bracket)
 
@@ -38,7 +38,9 @@ connectIrc' IrcInfo{..} acid = do
     chans@(inChan, outChan, _) <- (,,) <$> atomically newTChan <*> atomically newTChan <*> return acid
     connect hostname (show port) $ \(sock, addr) -> do
         handle <- socketToHandle sock ReadWriteMode
-        mapM_ (sendMessage' outChan) (initial nick channels)
+        forkIO $ do
+          threadDelay (2 * 10^6)
+          mapM_ (sendMessage' outChan) (initial nick channels)
         forkIO (ircWriter outChan handle)
         runReaderT (execWriterT . unHook $ hooks) chans
         ircReader outChan inChan handle

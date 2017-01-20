@@ -70,4 +70,9 @@ parseUrl :: Text -> Text -> Text
 parseUrl splitter msg = let
   (_, start) = T.breakOn splitter msg
   url = T.takeWhile (not . isSpace) start
-  in url
+  in postprocess url
+  where
+    postprocess u | "imgur" `T.isInfixOf` u && ".jpg" `T.isSuffixOf` u = stripSuffix u
+                  | "imgur" `T.isInfixOf` u && ".png" `T.isSuffixOf` u = stripSuffix u
+                  | otherwise = u
+    stripSuffix = T.intercalate "." . init . T.splitOn "."

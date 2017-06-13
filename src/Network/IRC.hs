@@ -25,7 +25,11 @@ data InMsg =
     deriving Show
 
 type OutChannel = TChan OutMsg
-type Hook = (TChan InMsg, TChan OutMsg, AcidState IrcState)
+type Hook = (TChan InMsg, TChan OutMsg)
+-- data Hook app = Hook { app :: app
+--                      , inboundChannel :: TChan InMsg
+--                      , outboundChannel :: TChan OutMsg
+--                      }
 
 
 sendMessage' :: TChan OutMsg -> OutMsg -> IO ()

@@ -1,5 +1,6 @@
 {-# Language OverloadedStrings #-}
 {-# Language RecordWildCards #-}
+{-# Language FlexibleContexts #-}
 module Hooks.Title where
 
 import Data.Text (Text)

@@ -37,6 +37,7 @@ executable wtfboths
                      , mtl
                      , transformers
                      , free
+                     , freer
                      , lens
                      , case-insensitive
                      , time
@@ -46,3 +47,4 @@ executable wtfboths
                      , aeson
                      , lens-aeson
                      , yaml
+                     , regex-tdfa

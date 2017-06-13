@@ -2,9 +2,7 @@
 {-# Language DeriveDataTypeable #-}
 {-# Language GeneralizedNewtypeDeriving #-}
 {-# Language TypeFamilies #-}
-{-# Language MultiParamTypeClasses #-}
-{-# Language FunctionalDependencies #-}
-{-# Language FlexibleInstances #-}
+{-# Language FlexibleContexts #-}
 module Data.Acid.Database
 (
     AcidState

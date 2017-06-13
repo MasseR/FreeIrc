@@ -1,6 +1,7 @@
 {-# Language OverloadedStrings #-}
 {-# Language DeriveGeneric #-}
 {-# Language RecordWildCards #-}
+{-# Language FlexibleContexts #-}
 module Main where
 
 import Control.Exception (bracket)

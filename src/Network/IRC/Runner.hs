@@ -1,6 +1,10 @@
 {-# Language RecordWildCards #-}
 {-# Language OverloadedStrings #-}
 {-# Language GeneralizedNewtypeDeriving #-}
+{-# Language DataKinds #-}
+{-# Language TypeFamilies #-}
+{-# Language FlexibleContexts #-}
+{-# Language ScopedTypeVariables #-}
 module Network.IRC.Runner where
 
 import Hooks.Algebra
@@ -18,38 +22,42 @@ import Control.Concurrent.STM (atomically)
 import Control.Concurrent (forkIO, ThreadId, threadDelay)
 import Data.Acid.Database
 import Control.Exception (bracket)
+import Control.Monad.Freer
+import Plugin
+import Types
 
-data IrcInfo = IrcInfo {
+data IrcInfo ps = IrcInfo {
     hostname :: String
   , port :: !Int
   , nick :: !Text
   , channels :: [Text]
-  , hooks :: HookBuilder ()
+  , hooks :: Plugins InMsg ps
   }
 
-newtype HookBuilder a = HookBuilder {unHook :: WriterT [ThreadId] (ReaderT Hook IO)  a}
-  deriving (Functor, Applicative, Monad, MonadWriter [ThreadId], MonadReader Hook, MonadIO)
 
-connectIrc :: IrcInfo -> IO ()
-connectIrc i@IrcInfo{..} = newAcid hostname (connectIrc' i)
+-- newtype HookBuilder app a = HookBuilder {unHook :: WriterT [ThreadId] (ReaderT (Hook app) IO)  a}
+--   deriving (Functor, Applicative, Monad, MonadWriter [ThreadId], MonadReader Hook, MonadIO)
 
-connectIrc' :: IrcInfo -> AcidState IrcState -> IO ()
-connectIrc' IrcInfo{..} acid = do
-    chans@(inChan, outChan, _) <- (,,) <$> atomically newTChan <*> atomically newTChan <*> return acid
+-- connectIrc :: IrcInfo -> IO ()
+-- connectIrc i@IrcInfo{..} = newAcid hostname (connectIrc' i)
+
+connectIrc :: IrcInfo ps -> IO ()
+connectIrc IrcInfo{..} = do
+    chans@(inChan, outChan) <- (,) <$> atomically newTChan <*> atomically newTChan
     connect hostname (show port) $ \(sock, addr) -> do
         handle <- socketToHandle sock ReadWriteMode
         forkIO $ do
           threadDelay (2 * 10^6)
           mapM_ (sendMessage' outChan) (initial nick channels)
         forkIO (ircWriter outChan handle)
-        runReaderT (execWriterT . unHook $ hooks) chans
+        -- runReaderT (execWriterT . unHook $ hooks) chans
         ircReader outChan inChan handle
         hClose handle
 
-newAcid :: String -> (AcidState IrcState -> IO ()) -> IO ()
-newAcid host f = bracket (openLocalStateFrom ("stateFromHost/"<>host) initialIrcState)
-                       (createCheckpointAndClose)
-                       (\acid -> f acid)
+-- newAcid :: String -> (AcidState IrcState -> IO ()) -> IO ()
+-- newAcid host f = bracket (openLocalStateFrom ("stateFromHost/"<>host) initialIrcState)
+--                        (createCheckpointAndClose)
+--                        (\acid -> f acid)
 
 initial :: Text -> [Text] -> [OutMsg]
 initial nick channels = [Nick nick, User "foo" "foo" "foo" "foo"] ++ [Join c | c <- channels]
@@ -70,13 +78,22 @@ ircReader outChan inChan h = forever $ do
          Right m -> atomically $ writeTChan inChan m
          Left err -> T.putStrLn $ "Unparsed " <> err
 
-newHook :: (InMsg -> Irc ()) -> HookBuilder ()
-newHook f = do
-  original@(_,_,acid) <- ask
-  (inChan, outChan) <- liftIO $ atomically $ duplicate original
-  _t <- liftIO $ forkIO $ forever $ do
-    msg <- atomically $ readTChan inChan
-    void $ forkIO $ runReaderT (runIrc (f msg)) (ReadState outChan acid)
-  tell []
-  where
-    duplicate (a,b,_) = (,) <$> dupTChan a <*> dupTChan b
+runPlugin :: HasApp app (ReadState app) => Hook -> Plugin InMsg app -> IO ThreadId
+runPlugin original (Plugin env _ w) = do
+    (inChan, outChan) <- atomically $ duplicate original
+    forkIO $ forever $ do
+        msg <- atomically $ readTChan inChan
+        void $ forkIO (runReaderT (w msg) (ReadState outChan env))
+    where
+        duplicate (a,b) = (,) <$> dupTChan a <*> dupTChan b
+
+-- newHook :: (InMsg -> Eff '[IrcF OutMsg, ReaderT ReadState IO] ()) -> HookBuilder ()
+-- newHook f = do
+--   original <- ask
+--   (inChan, outChan) <- liftIO $ atomically $ duplicate original
+--   t <- liftIO $ forkIO $ forever $ do
+--     msg <- atomically $ readTChan inChan
+--     forkIO (runReaderT (runM . runIrc $ (f msg)) (ReadState outChan))
+--   tell [t]
+--   where
+--     duplicate (a,b) = (,) <$> dupTChan a <*> dupTChan b

@@ -2,13 +2,12 @@
 {-# Language DeriveDataTypeable #-}
 {-# Language GeneralizedNewtypeDeriving #-}
 {-# Language TypeFamilies #-}
+{-# Language FlexibleContexts #-}
 module Data.Acid.Database
 (
     AcidState
   , IrcState
   , createCheckpointAndClose
-  , query'
-  , update'
   , openLocalStateFrom
   , UrlRecord(..)
   , AddUrl(..)
@@ -16,6 +15,8 @@ module Data.Acid.Database
   , TopOnes(..)
   , PlusOne(..)
   , initialIrcState
+  , update
+  , query
 )
 where
 
@@ -23,6 +24,9 @@ where
 import Control.Monad.Reader
 import Control.Monad.State
 import Data.Data
+
+import Types
+import Plugin
 
 import Data.Acid (AcidState, Query, Update, makeAcidic, openLocalStateFrom)
 import Data.Acid.Advanced (query', update')
@@ -81,3 +85,5 @@ topOnes n = f <$> view plusOnes
 
 $(makeAcidic ''IrcState ['addUrl, 'getUrl, 'plusOne, 'topOnes])
 
+query ev = asks readStateApp >>= \st -> query' st ev
+update ev = asks readStateApp >>= \st -> update' st ev

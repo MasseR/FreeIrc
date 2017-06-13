@@ -3,6 +3,8 @@
 {-# Language TypeOperators #-}
 {-# Language DataKinds #-}
 {-# Language FlexibleContexts #-}
+{-# Language FlexibleInstances #-}
+{-# Language MultiParamTypeClasses #-}
 module Hooks.Algebra where
 
 import GHC.TypeLits
@@ -19,27 +21,29 @@ import qualified Data.Text as T
 import Data.Time (UTCTime)
 import qualified Data.Time as Time
 import qualified Data.Acid.Database as DB
+import Plugin
+import Types
 
-data IrcF msg a where
-  SendMessage :: msg -> IrcF msg ()
 
 type Header = [(CI BS.ByteString, BS.ByteString)]
-data Payload = Payload Header ByteString deriving Show
-data WebF a where
-  Fetch :: Options -> String -> WebF Payload
+-- data Payload = Payload Header ByteString deriving Show
+-- data WebF a where
+--   Fetch :: Options -> String -> WebF Payload
 
-data DatabaseF a where
-    AddUrl :: Text -> DatabaseF DB.UrlRecord
-    GetUrl :: Text -> DatabaseF [DB.UrlRecord]
-    GetUrlCurrentTime :: DatabaseF UTCTime
-    PlusOne :: Text -> DatabaseF ()
-    TopOnes :: Int -> DatabaseF [Text]
+-- data DatabaseF a where
+--     AddUrl :: Text -> DatabaseF DB.UrlRecord
+--     GetUrl :: Text -> DatabaseF [DB.UrlRecord]
+--     GetUrlCurrentTime :: DatabaseF UTCTime
+--     PlusOne :: Text -> DatabaseF ()
+--     TopOnes :: Int -> DatabaseF [Text]
 
-data ReadState app = ReadState { outChannel :: OutChannel
-                           , app :: app }
 
-sendMessage :: Member (IrcF OutMsg) xs => OutMsg -> Eff xs ()
-sendMessage out = send (SendMessage out)
+instance HasApp app (ReadState app) where
+    getApp = readStateApp
+
+
+-- sendMessage :: Member (IrcF OutMsg) xs => OutMsg -> Eff xs ()
+-- sendMessage out = send (SendMessage out)
 
 -- fetch :: String -> Irc Payload
 -- fetch url = fetchWith defaults url
@@ -49,7 +53,9 @@ sendMessage out = send (SendMessage out)
 --
 -- addUrl :: Text -> DB.UrlRecord -> Irc ()
 -- addUrl url r = Irc $ liftF (A3 (AddUrl url r ()))
---
+
+-- getUrl :: MonadReader r m, MonadIO m, jText 
+
 -- getUrl :: Text -> Irc [DB.UrlRecord]
 -- getUrl url = Irc $ liftF (A3 (GetUrl url id))
 --
@@ -81,8 +87,9 @@ sendMessage out = send (SendMessage out)
 -- runIrc :: Eff ('[IrcF OutMsg, ReaderT (ReadState app) IO]) a -> Eff '[ReaderT (ReadState app) IO] a
 -- runIrc = runNat irc2m
 --     where
---         irc2m :: IrcF OutMsg a -> ReaderT (ReadState app) IO a
---         irc2m (SendMessage msg) = asks outChannel >>= \c -> liftIO (sendMessage' c msg)
+sendMessage :: (MonadReader (ReadState app) m, MonadIO m) => OutMsg -> m ()
+sendMessage msg = asks readStateOutChannel >>= \c -> liftIO (sendMessage' c msg)
+
 -- runIrc :: Irc a -> ReaderT ReadState IO a
 -- runIrc = foldFree f . unIrc
 --   where
@@ -100,6 +107,6 @@ sendMessage out = send (SendMessage out)
 respondTarget :: Text -> Text -> Text
 respondTarget nick target = if "#" `T.isPrefixOf` target then target else nick
 
-respondTo :: Member (IrcF OutMsg) xs => Text -> Text -> Text -> Eff xs ()
+respondTo :: (MonadReader (ReadState app) m, MonadIO m) => Text -> Text -> Text -> m ()
 respondTo nick trg msg = sendMessage (Msg (respondTarget nick trg) msg)
 

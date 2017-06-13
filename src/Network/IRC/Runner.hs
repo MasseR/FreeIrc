@@ -24,13 +24,14 @@ import Data.Acid.Database
 import Control.Exception (bracket)
 import Control.Monad.Freer
 import Plugin
+import Types
 
-data IrcInfo effs ps = IrcInfo {
+data IrcInfo ps = IrcInfo {
     hostname :: String
   , port :: !Int
   , nick :: !Text
   , channels :: [Text]
-  , hooks :: Plugins effs OutMsg ps
+  , hooks :: Plugins InMsg ps
   }
 
 
@@ -40,7 +41,7 @@ data IrcInfo effs ps = IrcInfo {
 -- connectIrc :: IrcInfo -> IO ()
 -- connectIrc i@IrcInfo{..} = newAcid hostname (connectIrc' i)
 
-connectIrc :: IrcInfo effs ps -> IO ()
+connectIrc :: IrcInfo ps -> IO ()
 connectIrc IrcInfo{..} = do
     chans@(inChan, outChan) <- (,) <$> atomically newTChan <*> atomically newTChan
     connect hostname (show port) $ \(sock, addr) -> do
@@ -77,15 +78,12 @@ ircReader outChan inChan h = forever $ do
          Right m -> atomically $ writeTChan inChan m
          Left err -> T.putStrLn $ "Unparsed " <> err
 
--- runPlugin :: Hook -> Plugin '[IrcF OutMsg, ReaderT (ReadState app) IO] InMsg app -> IO ThreadId
-runPlugin original plugin = do
+runPlugin :: HasApp app (ReadState app) => Hook -> Plugin InMsg app -> IO ThreadId
+runPlugin original (Plugin env _ w) = do
     (inChan, outChan) <- atomically $ duplicate original
     forkIO $ forever $ do
         msg <- atomically $ readTChan inChan
-        let w = Plugin.work plugin
-            env = Plugin.app plugin
-        undefined
-        -- void $ forkIO (runReaderT (runM . runIrc $ w msg) (ReadState outChan env))
+        void $ forkIO (runReaderT (w msg) (ReadState outChan env))
     where
         duplicate (a,b) = (,) <$> dupTChan a <*> dupTChan b
 

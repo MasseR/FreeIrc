@@ -10,30 +10,18 @@ import Control.Concurrent.STM.TChan
 import Control.Concurrent.STM (atomically)
 import Data.Monoid
 import Data.Acid.Database
+import Control.Monad.Trans
+import Types
 
-data OutMsg =
-    Nick !Text
-  | User !Text !Text !Text !Text
-  | Pong !Text
-  | Join !Text
-  | Msg !Text !Text
-  deriving Show
 
-data InMsg =
-    Ping !Text
-  | PrivMsg !Text !Text !Text
-    deriving Show
-
-type OutChannel = TChan OutMsg
-type Hook = (TChan InMsg, TChan OutMsg)
 -- data Hook app = Hook { app :: app
 --                      , inboundChannel :: TChan InMsg
 --                      , outboundChannel :: TChan OutMsg
 --                      }
 
 
-sendMessage' :: TChan OutMsg -> OutMsg -> IO ()
-sendMessage' out = atomically . writeTChan out
+sendMessage' :: MonadIO m => TChan OutMsg -> OutMsg -> m ()
+sendMessage' out = liftIO . atomically . writeTChan out
 
 
 renderMessage :: OutMsg -> Text

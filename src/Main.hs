@@ -3,19 +3,25 @@
 {-# Language RecordWildCards #-}
 module Main where
 
+import Control.Exception (bracket)
+import Data.Acid.Database
 import Config
 import Data.Yaml.Config
 import Data.Yaml
 import Data.Aeson (FromJSON, ToJSON)
 import GHC.Generics (Generic)
 import Data.Text (Text)
-import Network.IRC.Runner (HookBuilder, newHook, IrcInfo(..))
+import Network.IRC.Runner (IrcInfo(..))
 import qualified Network.IRC.Runner as IRC
+import Plugin
 import Hooks.Algebra
+import Control.Monad.Reader
+import Control.Monad.Trans
 import Hooks.Title
-import Hooks.Weather
-import Hooks.PlusOne
+-- import Hooks.Weather
+-- import Hooks.PlusOne
 import Network.IRC
+import Types
 import qualified Network.IRC as IRC
 import qualified Data.Text as T
 
@@ -35,28 +41,35 @@ instance ToJSON ConnectionConf
 instance ToJSON HookConf
 instance ToJSON Configuration
 
-adminHook :: InMsg -> Irc ()
-adminHook (PrivMsg _nick _target msg) =
-  case T.words msg of
-       ["!join", channel] -> sendMessage (Join channel)
-       _ -> return ()
-adminHook _ = return ()
+-- adminHook :: InMsg -> Irc ()
+-- adminHook (PrivMsg _nick _target msg) =
+--   case T.words msg of
+--        ["!join", channel] -> sendMessage (Join channel)
+--        _ -> return ()
+-- adminHook _ = return ()
 
-echoHook :: InMsg -> Irc ()
-echoHook (PrivMsg _nick target msg) = sendMessage (Msg target msg)
-echoHook _ = return ()
+echo (PrivMsg _nick target msg) = sendMessage (Msg target msg)
+echo _ = return ()
 
-myHooks :: HookConf -> HookBuilder ()
-myHooks HookConf{..} = do
-    newHook urlTitleHook
-    newHook adminHook
-    newHook plusOneHook
-    newHook $ weatherHook $ ApiKey darkskyApiKey
+myPlugins acid _ = Plugin () (const $ return ()) echo
+                :> Plugin acid (const $ return ()) urlTitleHook
+                :> PNil
+
+-- myHooks :: HookConf -> HookBuilder ()
+-- myHooks HookConf{..} = do
+--     newHook urlTitleHook
+--     newHook adminHook
+--     newHook plusOneHook
+--     newHook $ weatherHook $ ApiKey darkskyApiKey
+
+withAcid path initial f = bracket (openLocalStateFrom path initial)
+                                  (createCheckpointAndClose)
+                                  (\acid -> f acid)
 
 main :: IO ()
-main = do
+main = withAcid "state" initialIrcState $ \acid -> do
     conf <- loadYamlSettings ["config/irc.yaml"] [] ignoreEnv :: IO Configuration
     -- XXX: Use control.concurrent.async and list comprehensions to start
     -- multiple connections based on ConnectionConf
-    defaultMain defaultConf {hooks = myHooks $ hooksConf conf}
+    defaultMain defaultConf {hooks = myPlugins acid $ hooksConf conf}
 

@@ -17,8 +17,14 @@ import Data.Char (isSpace)
 import Data.List (find)
 import Data.Acid.Database (UrlRecord(..))
 import Data.Monoid
+import Types
+import Data.Time (getCurrentTime)
+import Data.Acid.Database
+import Network.Wreq
+import Control.Lens
+import Control.Monad.Trans (liftIO)
 
-urlTitleHook :: InMsg -> Irc ()
+-- urlTitleHook :: InMsg -> m ()
 urlTitleHook (PrivMsg nick target msg) =
   case () of
        () | "http://" `T.isInfixOf` msg -> handleTitle nick target "http://" msg
@@ -26,21 +32,20 @@ urlTitleHook (PrivMsg nick target msg) =
        _ -> return ()
 urlTitleHook _ = return ()
 
-handleTitle :: Text -> Text -> Text -> Text -> Irc ()
+-- handleTitle :: Text -> Text -> Text -> Text -> Irc ()
 handleTitle nick target prefix msg = maybe (return ()) (respond url nick respondTo) =<< (handleWeb url)
   where
     url = parseUrl prefix msg
     respondTo = respondTarget nick target
 
-respond :: Text -> Text -> Text -> Text -> Irc ()
+-- respond :: Text -> Text -> Text -> Text -> Irc ()
 respond url nick respondTo title = do
-  now <- getCurrentTime
-  previous <- getUrl (respondTo <> url)
+    now <- liftIO getCurrentTime
+    previous <- query (GetUrl (respondTo <> url))
+    sendMessage (Msg respondTo (format previous title))
+    let r = UrlRecord url nick now
+    update (AddUrl (respondTo <> url) r)
 
-  let r = UrlRecord url nick now
-  addUrl (respondTo <> url) r
-
-  sendMessage (Msg respondTo (format previous title))
 
 format :: [UrlRecord] -> Text -> Text
 format [] title = title
@@ -55,10 +60,11 @@ parseTitle body = let
   title = listToMaybe . T.lines . T.strip . castString . innerText $ titleLst
   in if maybe False T.null title then Nothing else title
 
-handleWeb :: Text -> Irc (Maybe Text)
+-- handleWeb :: Text -> Irc (Maybe Text)
 handleWeb url = do
-  Payload headers body <- fetch (T.unpack url)
-  return $ if isOk headers body then parseTitle body else Nothing
+    r <- liftIO $ get (T.unpack url)
+    let body = r ^. responseBody
+    return $ if isOk (r ^. responseHeaders) body then parseTitle body else Nothing
   where
     isOk headers body =
       case find (\(k,_) -> k == "content-type") headers of

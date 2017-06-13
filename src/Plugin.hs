@@ -5,18 +5,21 @@
 {-# Language KindSignatures #-}
 {-# Language PolyKinds #-}
 {-# Language TypeOperators #-}
+{-# Language FunctionalDependencies #-}
 module Plugin where
 
-import Hooks.Algebra
-import Control.Monad.Freer
+import Control.Monad.Reader
+import Types
 
-data Plugin (xs :: [* -> *]) msg app
-    = Plugin { app :: app
-             , clean :: app -> IO ()
-             , work :: msg -> Eff xs () }
+class HasApp app b | b -> app where
+    getApp :: b -> app
 
-data Plugins xs msg (a :: [*]) where
-    PNil :: Plugins xs msg '[]
-    (:>) :: Plugin xs msg r -> Plugins xs msg rs -> Plugins xs msg (r ': rs)
+data Plugin msg app = Plugin { app :: app
+                             , clean :: app -> IO ()
+                             , work :: msg -> ReaderT (ReadState app) IO () }
+
+data Plugins msg (a :: [*]) where
+    PNil :: Plugins msg '[]
+    (:>) :: Plugin msg r -> Plugins msg rs -> Plugins msg (r ': rs)
 
 infixr 2 :>

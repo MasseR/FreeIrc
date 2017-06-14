@@ -2,6 +2,7 @@ module Types where
 
 import Control.Concurrent.STM.TChan (TChan)
 import Data.Text (Text)
+import Control.Monad.Reader
 
 data OutMsg =
     Nick !Text
@@ -21,3 +22,5 @@ type Hook = (TChan InMsg, TChan OutMsg)
 data ReadState app = ReadState { readStateOutChannel :: OutChannel
                                , readStateApp :: app }
 
+
+type Handler app a = ReaderT (ReadState app) IO a

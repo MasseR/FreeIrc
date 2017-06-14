@@ -42,17 +42,14 @@ instance ToJSON ConnectionConf
 instance ToJSON HookConf
 instance ToJSON Configuration
 
--- adminHook :: InMsg -> Irc ()
--- adminHook (PrivMsg _nick _target msg) =
---   case T.words msg of
---        ["!join", channel] -> sendMessage (Join channel)
---        _ -> return ()
--- adminHook _ = return ()
+adminHook (PrivMsg _nick _target msg) =
+  case T.words msg of
+       ["!join", channel] -> sendMessage (Join channel)
+       _ -> return ()
+adminHook _ = return ()
 
-echo (PrivMsg _nick target msg) = sendMessage (Msg target msg)
-echo _ = return ()
 
-myPlugins acid HookConf{..} = Plugin () (const $ return ()) echo
+myPlugins acid HookConf{..} = Plugin () (const $ return ()) adminHook
                             :> Plugin acid (const $ return ()) urlTitleHook
                             :> Plugin (ApiKey darkskyApiKey) (const $ return ()) weatherHook
                             :> PNil

@@ -4,6 +4,7 @@
 {-# Language FlexibleContexts #-}
 module Main where
 
+import Control.Concurrent (forkIO)
 import Control.Exception (bracket)
 import Data.Acid.Database
 import Config
@@ -18,6 +19,7 @@ import Plugin
 import Hooks.Algebra
 import Control.Monad.Reader
 import Control.Monad.Trans
+import Control.Monad (forM_)
 import Hooks.Title
 import Hooks.Weather
 import Hooks.PlusOne
@@ -26,14 +28,9 @@ import Types
 import qualified Network.IRC as IRC
 import qualified Data.Text as T
 import Data.Time
+import Control.Lens ((^.), (^..))
+import Data.Text.Lens (packed, unpacked)
 
-data ConnectionConf = ConnectionConf { hostname :: Text
-                                     , port :: Int
-                                     , channels :: [Text]} deriving (Generic, Show)
-data HookConf = HookConf { darkskyApiKey :: String } deriving (Generic, Show)
-data Configuration = Configuration { connection :: [ConnectionConf]
-                                   , hooksConf :: HookConf
-                                   } deriving (Generic, Show)
 
 instance FromJSON ConnectionConf
 instance FromJSON HookConf
@@ -58,12 +55,12 @@ uptimeHook _ = return ()
 base = Plugin () (const $ return ())
 
 
-myPlugins start acid HookConf{..} = base adminHook
-                                 :> Plugin acid (const $ return ()) urlTitleHook
-                                 :> Plugin acid (const $ return ()) plusOneHook
-                                 :> Plugin (ApiKey darkskyApiKey) (const $ return ()) weatherHook
-                                 :> Plugin start (const $ return ()) uptimeHook
-                                 :> PNil
+myPlugins start acid conf = base adminHook
+                         :> Plugin acid (const $ return ()) urlTitleHook
+                         :> Plugin acid (const $ return ()) plusOneHook
+                         :> Plugin (ApiKey (conf ^. darkskyApiKey)) (const $ return ()) weatherHook
+                         :> Plugin start (const $ return ()) uptimeHook
+                         :> PNil
 
 -- myHooks :: HookConf -> HookBuilder ()
 -- myHooks HookConf{..} = do
@@ -76,11 +73,14 @@ withAcid path initial f = bracket (openLocalStateFrom path initial)
                                   (createCheckpointAndClose)
                                   (\acid -> f acid)
 
+
 main :: IO ()
 main = withAcid "state" initialIrcState $ \acid -> do
     now <- getCurrentTime
     conf <- loadYamlSettings ["config/irc.yaml"] [] ignoreEnv :: IO Configuration
     -- XXX: Use control.concurrent.async and list comprehensions to start
     -- multiple connections based on ConnectionConf
-    defaultMain defaultConf {hooks = myPlugins now acid $ hooksConf conf}
-
+    let runConf = defaultConf {hooks = myPlugins now acid $ conf ^. hooksConf}
+    forM_ (conf ^. connection) $ \c ->
+        forkIO . defaultMain $ runConf { IRC.hostname = c ^. Config.hostname.unpacked
+                                       , IRC.port = c ^. Config.port }

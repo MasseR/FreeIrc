@@ -19,7 +19,7 @@ import Hooks.Algebra
 import Control.Monad.Reader
 import Control.Monad.Trans
 import Hooks.Title
--- import Hooks.Weather
+import Hooks.Weather
 -- import Hooks.PlusOne
 import Network.IRC
 import Types
@@ -52,9 +52,10 @@ instance ToJSON Configuration
 echo (PrivMsg _nick target msg) = sendMessage (Msg target msg)
 echo _ = return ()
 
-myPlugins acid _ = Plugin () (const $ return ()) echo
-                :> Plugin acid (const $ return ()) urlTitleHook
-                :> PNil
+myPlugins acid HookConf{..} = Plugin () (const $ return ()) echo
+                            :> Plugin acid (const $ return ()) urlTitleHook
+                            :> Plugin (ApiKey darkskyApiKey) (const $ return ()) weatherHook
+                            :> PNil
 
 -- myHooks :: HookConf -> HookBuilder ()
 -- myHooks HookConf{..} = do

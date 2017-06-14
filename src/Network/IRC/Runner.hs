@@ -34,13 +34,6 @@ data IrcInfo ps = IrcInfo {
   , hooks :: Plugins InMsg ps
   }
 
-
--- newtype HookBuilder app a = HookBuilder {unHook :: WriterT [ThreadId] (ReaderT (Hook app) IO)  a}
---   deriving (Functor, Applicative, Monad, MonadWriter [ThreadId], MonadReader Hook, MonadIO)
-
--- connectIrc :: IrcInfo -> IO ()
--- connectIrc i@IrcInfo{..} = newAcid hostname (connectIrc' i)
-
 connectIrc :: IrcInfo ps -> IO ()
 connectIrc IrcInfo{..} = do
     chans@(inChan, outChan) <- (,) <$> atomically newTChan <*> atomically newTChan
@@ -53,11 +46,6 @@ connectIrc IrcInfo{..} = do
         -- runReaderT (execWriterT . unHook $ hooks) chans
         ircReader outChan inChan handle
         hClose handle
-
--- newAcid :: String -> (AcidState IrcState -> IO ()) -> IO ()
--- newAcid host f = bracket (openLocalStateFrom ("stateFromHost/"<>host) initialIrcState)
---                        (createCheckpointAndClose)
---                        (\acid -> f acid)
 
 initial :: Text -> [Text] -> [OutMsg]
 initial nick channels = [Nick nick, User "foo" "foo" "foo" "foo"] ++ [Join c | c <- channels]
@@ -86,14 +74,3 @@ runPlugin original (Plugin env _ w) = do
         void $ forkIO (runReaderT (w msg) (ReadState outChan env))
     where
         duplicate (a,b) = (,) <$> dupTChan a <*> dupTChan b
-
--- newHook :: (InMsg -> Eff '[IrcF OutMsg, ReaderT ReadState IO] ()) -> HookBuilder ()
--- newHook f = do
---   original <- ask
---   (inChan, outChan) <- liftIO $ atomically $ duplicate original
---   t <- liftIO $ forkIO $ forever $ do
---     msg <- atomically $ readTChan inChan
---     forkIO (runReaderT (runM . runIrc $ (f msg)) (ReadState outChan))
---   tell [t]
---   where
---     duplicate (a,b) = (,) <$> dupTChan a <*> dupTChan b

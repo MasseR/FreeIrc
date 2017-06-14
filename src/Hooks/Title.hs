@@ -25,7 +25,9 @@ import Network.Wreq
 import Control.Lens
 import Control.Monad.Trans (liftIO)
 
--- urlTitleHook :: InMsg -> m ()
+type TitleHandler a = Handler (AcidState IrcState) a
+
+urlTitleHook :: InMsg -> TitleHandler ()
 urlTitleHook (PrivMsg nick target msg) =
   case () of
        () | "http://" `T.isInfixOf` msg -> handleTitle nick target "http://" msg
@@ -33,13 +35,13 @@ urlTitleHook (PrivMsg nick target msg) =
        _ -> return ()
 urlTitleHook _ = return ()
 
--- handleTitle :: Text -> Text -> Text -> Text -> Irc ()
+handleTitle :: Text -> Text -> Text -> Text -> TitleHandler ()
 handleTitle nick target prefix msg = maybe (return ()) (respond url nick respondTo) =<< (handleWeb url)
   where
     url = parseUrl prefix msg
     respondTo = respondTarget nick target
 
--- respond :: Text -> Text -> Text -> Text -> Irc ()
+respond :: Text -> Text -> Text -> Text -> TitleHandler ()
 respond url nick respondTo title = do
     now <- liftIO getCurrentTime
     previous <- query (GetUrl (respondTo <> url))
@@ -61,7 +63,7 @@ parseTitle body = let
   title = listToMaybe . T.lines . T.strip . castString . innerText $ titleLst
   in if maybe False T.null title then Nothing else title
 
--- handleWeb :: Text -> Irc (Maybe Text)
+handleWeb :: Text -> TitleHandler (Maybe Text)
 handleWeb url = do
     r <- liftIO $ get (T.unpack url)
     let body = r ^. responseBody

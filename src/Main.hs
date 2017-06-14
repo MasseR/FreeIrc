@@ -25,6 +25,7 @@ import Network.IRC
 import Types
 import qualified Network.IRC as IRC
 import qualified Data.Text as T
+import Data.Time
 
 data ConnectionConf = ConnectionConf { hostname :: Text
                                      , port :: Int
@@ -48,12 +49,21 @@ adminHook (PrivMsg _nick _target msg) =
        _ -> return ()
 adminHook _ = return ()
 
+uptimeHook :: InMsg -> Handler UTCTime ()
+uptimeHook (PrivMsg nick target "!uptime") = do
+    started <- asks readStateApp
+    respondTo nick target $ T.pack $ show started
+uptimeHook _ = return ()
 
-myPlugins acid HookConf{..} = Plugin () (const $ return ()) adminHook
-                            :> Plugin acid (const $ return ()) urlTitleHook
-                            :> Plugin acid (const $ return ()) plusOneHook
-                            :> Plugin (ApiKey darkskyApiKey) (const $ return ()) weatherHook
-                            :> PNil
+base = Plugin () (const $ return ())
+
+
+myPlugins start acid HookConf{..} = base adminHook
+                                 :> Plugin acid (const $ return ()) urlTitleHook
+                                 :> Plugin acid (const $ return ()) plusOneHook
+                                 :> Plugin (ApiKey darkskyApiKey) (const $ return ()) weatherHook
+                                 :> Plugin start (const $ return ()) uptimeHook
+                                 :> PNil
 
 -- myHooks :: HookConf -> HookBuilder ()
 -- myHooks HookConf{..} = do
@@ -68,8 +78,9 @@ withAcid path initial f = bracket (openLocalStateFrom path initial)
 
 main :: IO ()
 main = withAcid "state" initialIrcState $ \acid -> do
+    now <- getCurrentTime
     conf <- loadYamlSettings ["config/irc.yaml"] [] ignoreEnv :: IO Configuration
     -- XXX: Use control.concurrent.async and list comprehensions to start
     -- multiple connections based on ConnectionConf
-    defaultMain defaultConf {hooks = myPlugins acid $ hooksConf conf}
+    defaultMain defaultConf {hooks = myPlugins now acid $ hooksConf conf}
 

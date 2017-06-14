@@ -20,7 +20,7 @@ import Control.Monad.Reader
 import Control.Monad.Trans
 import Hooks.Title
 import Hooks.Weather
--- import Hooks.PlusOne
+import Hooks.PlusOne
 import Network.IRC
 import Types
 import qualified Network.IRC as IRC
@@ -51,6 +51,7 @@ adminHook _ = return ()
 
 myPlugins acid HookConf{..} = Plugin () (const $ return ()) adminHook
                             :> Plugin acid (const $ return ()) urlTitleHook
+                            :> Plugin acid (const $ return ()) plusOneHook
                             :> Plugin (ApiKey darkskyApiKey) (const $ return ()) weatherHook
                             :> PNil
 

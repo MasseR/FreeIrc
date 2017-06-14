@@ -43,7 +43,7 @@ connectIrc IrcInfo{..} = do
           threadDelay (2 * 10^6)
           mapM_ (sendMessage' outChan) (initial nick channels)
         forkIO (ircWriter outChan handle)
-        -- runReaderT (execWriterT . unHook $ hooks) chans
+        runPlugins chans hooks
         ircReader outChan inChan handle
         hClose handle
 
@@ -65,6 +65,13 @@ ircReader outChan inChan h = forever $ do
          Right (Ping response) -> atomically $ writeTChan outChan (Pong response)
          Right m -> atomically $ writeTChan inChan m
          Left err -> T.putStrLn $ "Unparsed " <> err
+
+runPlugins :: Hook -> Plugins InMsg apps -> IO [ThreadId]
+runPlugins _ PNil = return []
+runPlugins original (plugin :> ps) = do
+    t <- runPlugin original plugin
+    ts <- runPlugins original ps
+    return $ t : ts
 
 runPlugin :: HasApp app (ReadState app) => Hook -> Plugin InMsg app -> IO ThreadId
 runPlugin original (Plugin env _ w) = do

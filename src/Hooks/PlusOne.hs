@@ -1,4 +1,5 @@
 {-# Language OverloadedStrings #-}
+{-# Language FlexibleContexts #-}
 module Hooks.PlusOne where
 
 
@@ -15,14 +16,14 @@ import Text.HTML.TagSoup
 import Data.Maybe (listToMaybe)
 import Data.Char (isSpace)
 import Data.List (find)
-import Data.Acid.Database (TopOnes, PlusOne)
+import Data.Acid.Database
 import Data.Monoid
+import Types
 
-plusOneHook :: InMsg -> Irc ()
 plusOneHook (PrivMsg nick target msg) =
   case T.words msg of
-       (which:"+1":_) -> plusOne (T.filter ((/= ':')) which) >> respondTo nick target "+1'd"
-       ("!top":n:[]) -> topOnes (read $ T.unpack n) >>= respondTo nick target . format
+       (which:"+1":_) -> update (PlusOne (T.filter ((/= ':')) which)) >> respondTo nick target "+1'd"
+       ("!top":n:[]) -> query (TopOnes (read $ T.unpack n)) >>= respondTo nick target . format
        _ -> return ()
   where
     format = T.intercalate ", "

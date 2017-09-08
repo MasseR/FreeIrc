@@ -21,6 +21,9 @@ data HookConf = HookConf { hookConfDarkskyApiKey :: String } deriving (Generic, 
 data Configuration = Configuration { configurationConnection :: [ConnectionConf]
                                    , configurationHooksConf :: HookConf
                                    } deriving (Generic, Show)
+-- XXX: Do a manual aeson FromJSON
+-- XXX: Add username to configurable values
+
 makeFields ''ConnectionConf
 makeFields ''HookConf
 makeFields ''Configuration

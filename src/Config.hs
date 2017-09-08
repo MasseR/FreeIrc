@@ -32,6 +32,7 @@ defaultMain :: IrcInfo ps -> IO ()
 defaultMain conf = do
   connectIrc conf
 
+-- XXX: Add helper for automatic parsing of Config -> IrcInfo
 
 defaultConf :: IrcInfo '[]
 defaultConf = IrcInfo "localhost" 6667 "FooBot" ["#oo"] PNil

@@ -32,13 +32,6 @@ import Control.Lens ((^.), (^..))
 import Data.Text.Lens (packed, unpacked)
 
 
-instance FromJSON ConnectionConf
-instance FromJSON HookConf
-instance FromJSON Configuration
-
-instance ToJSON ConnectionConf
-instance ToJSON HookConf
-instance ToJSON Configuration
 
 adminHook (PrivMsg _nick _target msg) =
   case T.words msg of

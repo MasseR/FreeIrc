@@ -13,6 +13,7 @@ import Plugin
 import Data.Text (Text)
 import GHC.Generics (Generic)
 import Control.Lens
+import Data.Aeson
 
 data ConnectionConf = ConnectionConf { connectionConfHostname :: Text
                                      , connectionConfPort :: Int
@@ -24,7 +25,22 @@ data HookConf = HookConf { hookConfDarkskyApiKey :: String } deriving (Generic, 
 data Configuration = Configuration { configurationConnection :: [ConnectionConf]
                                    , configurationHooksConf :: HookConf
                                    } deriving (Generic, Show)
--- XXX: Do a manual aeson FromJSON
+
+instance FromJSON HookConf where
+    parseJSON = withObject "HookConf" $ \o ->
+        HookConf <$> o .: "darksky_key"
+
+instance FromJSON ConnectionConf where
+    parseJSON = withObject "ConnectionConf" $ \o ->
+        ConnectionConf <$> o .: "hostname"
+                       <*> o .: "port"
+                       <*> o .: "channels"
+                       <*> o .: "username"
+
+instance FromJSON Configuration where
+    parseJSON = withObject "Configuration" $ \o ->
+        Configuration <$> o .: "connection" <*> o .: "hooks"
+
 
 makeFields ''ConnectionConf
 makeFields ''HookConf

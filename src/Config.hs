@@ -16,13 +16,15 @@ import Control.Lens
 
 data ConnectionConf = ConnectionConf { connectionConfHostname :: Text
                                      , connectionConfPort :: Int
-                                     , connectionConfChannels :: [Text]} deriving (Generic, Show)
+                                     , connectionConfChannels :: [Text]
+                                     , connectionConfUsername :: Text } deriving (Generic, Show)
+
 data HookConf = HookConf { hookConfDarkskyApiKey :: String } deriving (Generic, Show)
+
 data Configuration = Configuration { configurationConnection :: [ConnectionConf]
                                    , configurationHooksConf :: HookConf
                                    } deriving (Generic, Show)
 -- XXX: Do a manual aeson FromJSON
--- XXX: Add username to configurable values
 
 makeFields ''ConnectionConf
 makeFields ''HookConf

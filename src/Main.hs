@@ -27,6 +27,7 @@ import Data.Time
 import Control.Lens ((^.), (^..))
 import Data.Text.Lens (packed, unpacked)
 import Control.Concurrent.Async (wait)
+import Text.Printf (printf)
 
 
 
@@ -39,7 +40,13 @@ adminHook _ = return ()
 uptimeHook :: InMsg -> Handler UTCTime ()
 uptimeHook (PrivMsg nick target "!uptime") = do
     started <- asks readStateApp
-    respondTo nick target $ T.pack $ show started
+    now <- liftIO getCurrentTime
+    let seconds = floor $ diffUTCTime now started :: Integer
+        (days, seconds') = seconds `quotRem` 86400
+        (hours, seconds'') = seconds' `quotRem` 3600
+        (minutes, seconds''') = seconds'' `quotRem` 60
+        uptime = printf "%d days, %d hours, %d minutes, %d seconds" days hours minutes seconds'''
+    respondTo nick target $ T.pack uptime
 uptimeHook _ = return ()
 
 base = Plugin () (const $ return ())

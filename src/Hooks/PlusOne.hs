@@ -22,8 +22,8 @@ import Types
 
 plusOneHook (PrivMsg nick target msg) =
   case T.words msg of
-       (which:"+1":_) -> update (PlusOne (T.filter ((/= ':')) which)) >> respondTo nick target "+1'd"
-       ("!top":n:[]) -> query (TopOnes (read $ T.unpack n)) >>= respondTo nick target . format
+       (which:"+1":_) -> update (PlusOne (T.filter (/= ':') which)) >> respondTo nick target "+1'd"
+       ["!top", n] -> query (TopOnes (read $ T.unpack n)) >>= respondTo nick target . format
        _ -> return ()
   where
     format = T.intercalate ", "

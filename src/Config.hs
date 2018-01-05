@@ -20,7 +20,7 @@ data ConnectionConf = ConnectionConf { connectionConfHostname :: Text
                                      , connectionConfChannels :: [Text]
                                      , connectionConfUsername :: Text } deriving (Generic, Show)
 
-data HookConf = HookConf { hookConfDarkskyApiKey :: String } deriving (Generic, Show)
+newtype HookConf = HookConf { hookConfDarkskyApiKey :: String } deriving (Generic, Show)
 
 data Configuration = Configuration { configurationConnection :: [ConnectionConf]
                                    , configurationHooksConf :: HookConf
@@ -47,8 +47,7 @@ makeFields ''HookConf
 makeFields ''Configuration
 
 defaultMain :: IrcInfo ps -> IO ()
-defaultMain conf = do
-  connectIrc conf
+defaultMain = connectIrc
 
 -- XXX: Add helper for automatic parsing of Config -> IrcInfo
 

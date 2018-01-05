@@ -1,6 +1,5 @@
 {-# Language RecordWildCards #-}
 {-# Language OverloadedStrings #-}
-{-# Language GeneralizedNewtypeDeriving #-}
 {-# Language DataKinds #-}
 {-# Language TypeFamilies #-}
 {-# Language FlexibleContexts #-}
@@ -9,7 +8,7 @@ module Network.IRC.Runner where
 
 import Hooks.Algebra
 import Network.IRC
-import Network.Socket hiding (recv, send, connect)
+import Network.Socket hiding (connect)
 import Network.Simple.TCP
 import Control.Monad.Writer
 import Control.Monad.Reader

@@ -48,7 +48,7 @@ data UrlRecord = UrlRecord {
   , _time :: !UTCTime
   } deriving (Eq, Ord, Show, Read, Data, Typeable)
 
-data IrcState_0 = IrcState_0 {
+newtype IrcState_0 = IrcState_0 {
   _urls_0 :: Map Text [UrlRecord]
   } deriving (Eq, Ord, Show, Read, Data, Typeable)
 

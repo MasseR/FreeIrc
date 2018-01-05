@@ -19,7 +19,6 @@ executable wtfboths
                      , Hooks.Algebra
                      , Hooks.Title
                      , Hooks.Weather
-                     , Hooks.AutoFree
                      , Hooks.PlusOne
                      , Config
                      , Data.Acid.Database
@@ -50,3 +49,4 @@ executable wtfboths
                      , lens-aeson
                      , yaml
                      , regex-tdfa
+                     , async

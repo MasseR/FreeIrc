@@ -8,3 +8,4 @@ build:
 
 test: build
 	stack test
+	hlint src

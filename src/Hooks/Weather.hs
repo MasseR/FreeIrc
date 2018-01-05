@@ -1,4 +1,3 @@
-{-# Language TemplateHaskell #-}
 {-# Language RecordWildCards #-}
 {-# Language OverloadedStrings #-}
 {-# Language FlexibleContexts #-}
@@ -14,7 +13,6 @@ import qualified Data.Text as T
 import Data.Aeson (decode, Value)
 import Data.Aeson.Lens
 import Hooks.Algebra
-import Network.Wreq
 import Network.IRC
 import Text.Printf
 import Network.Wreq

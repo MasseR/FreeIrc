@@ -1,0 +1,9 @@
+connection:
+    - hostname: localhost
+      port: 6667
+      channels:
+          - "#foo"
+      username: AsdBot
+hooks:
+    darksky_key: keykeykey
+

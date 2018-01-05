@@ -1,9 +1,6 @@
 {-# Language OverloadedStrings #-}
-{-# Language GeneralizedNewtypeDeriving #-}
-{-# Language DeriveFunctor #-}
 module Network.IRC where
 
--- import Control.Monad.State
 import qualified Data.Text as T
 import Data.Text (Text)
 import Control.Concurrent.STM.TChan
@@ -12,12 +9,6 @@ import Data.Monoid
 import Data.Acid.Database
 import Control.Monad.Trans
 import Types
-
-
--- data Hook app = Hook { app :: app
---                      , inboundChannel :: TChan InMsg
---                      , outboundChannel :: TChan OutMsg
---                      }
 
 
 sendMessage' :: MonadIO m => TChan OutMsg -> OutMsg -> m ()

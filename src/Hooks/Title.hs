@@ -16,7 +16,6 @@ import Text.HTML.TagSoup
 import Data.Maybe (listToMaybe)
 import Data.Char (isSpace)
 import Data.List (find)
-import Data.Acid.Database (UrlRecord(..))
 import Data.Monoid
 import Types
 import Data.Time (getCurrentTime)
@@ -36,7 +35,7 @@ urlTitleHook (PrivMsg nick target msg) =
 urlTitleHook _ = return ()
 
 handleTitle :: Text -> Text -> Text -> Text -> TitleHandler ()
-handleTitle nick target prefix msg = maybe (return ()) (respond url nick respondTo) =<< (handleWeb url)
+handleTitle nick target prefix msg = maybe (return ()) (respond url nick respondTo) =<< handleWeb url
   where
     url = parseUrl prefix msg
     respondTo = respondTarget nick target
@@ -52,7 +51,7 @@ respond url nick respondTo title = do
 
 format :: [UrlRecord] -> Text -> Text
 format [] title = title
-format (UrlRecord{..}:_) title = title <> " -- last seen by " <> _nick <> " on " <> (T.pack (show _time))
+format (UrlRecord{..}:_) title = title <> " -- last seen by " <> _nick <> " on " <> T.pack (show _time)
 
 
 parseTitle :: ByteString -> Maybe Text

@@ -21,7 +21,8 @@ import Types
 import Control.Monad.Logger
 
 data Coord = Coord {_latitude :: Double, _longitude :: Double} deriving Show
-data Weather = Weather { _temperature :: Double, _feelsLike :: Double, _icon :: Text } deriving Show
+data Cloudy = NoCloud | SomeCloud | Cloudy deriving Show
+data Weather = Weather { _temperature :: Double, _feelsLike :: Double, _icon :: Text, _cloudy :: Cloudy } deriving Show
 
 nominatim city = do
     let url = "http://nominatim.openstreetmap.org/search"
@@ -39,8 +40,12 @@ fetchWeather (ApiKey apiKey) Coord{..} = do
     let weather = Weather <$> fmap fahrenheitToCelcius (datapoint r "temperature")
                           <*> fmap fahrenheitToCelcius (datapoint r "apparentTemperature")
                           <*> r ^? responseBody . key "currently" . key "icon" . _String
+                          <*> (toCloudy <$> r ^? responseBody . key "currently" . key "cloudCover" . _Number)
     return weather
     where
+        toCloudy d | d <= 0.25 = NoCloud
+                   | d <= 0.75 = SomeCloud
+                   | otherwise = Cloudy
         datapoint json k = json ^? responseBody . key "currently" . key k . _Number
         fahrenheitToCelcius f = fromRational $ toRational (f - 32) / 1.8
 
@@ -52,7 +57,12 @@ weather city = runMaybeT $ do
     coords <- MaybeT $ nominatim city
     MaybeT $ fetchWeather apiKey coords
 
-formatWeather = T.pack . show
+formatWeather Weather{..} = T.pack $ printf "%0.0f degrees C, %s, %s" _temperature _icon (formatCloud _cloudy)
+    where
+        formatCloud :: Cloudy -> String
+        formatCloud Cloudy = "clouds"
+        formatCloud SomeCloud = "some clouds"
+        formatCloud _ = "clear skies"
 
 weatherHook (PrivMsg nick target msg) =
     case T.words msg of

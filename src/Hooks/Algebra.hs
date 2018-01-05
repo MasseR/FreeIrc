@@ -8,7 +8,6 @@
 module Hooks.Algebra where
 
 import GHC.TypeLits
-import Control.Monad.Freer
 import Control.Monad.Reader
 import Network.IRC
 import Data.ByteString.Lazy (ByteString)

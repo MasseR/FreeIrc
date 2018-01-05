@@ -37,8 +37,6 @@ executable wtfboths
                      , lens
                      , mtl
                      , transformers
-                     , free
-                     , freer
                      , lens
                      , case-insensitive
                      , time

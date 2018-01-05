@@ -1,6 +1,7 @@
 {-# Language RecordWildCards #-}
 {-# Language OverloadedStrings #-}
 {-# Language FlexibleContexts #-}
+{-# Language TemplateHaskell #-}
 module Hooks.Weather where
 
 import Control.Lens
@@ -17,6 +18,7 @@ import Network.IRC
 import Text.Printf
 import Network.Wreq
 import Types
+import Control.Monad.Logger
 
 data Coord = Coord {_latitude :: Double, _longitude :: Double} deriving Show
 data Weather = Weather { _temperature :: Double, _feelsLike :: Double, _icon :: Text } deriving Show
@@ -29,7 +31,7 @@ nominatim city = do
     let coords = Coord <$> datapoint r "lat" <*> datapoint r "lon"
     return coords
     where
-        datapoint json k = read . T.unpack <$> json ^? responseBody . key k . _String
+        datapoint json k = read . T.unpack <$> json ^? responseBody . nth 0 . key k . _String
 
 fetchWeather (ApiKey apiKey) Coord{..} = do
     let url = printf "https://api.darksky.net/forecast/%s/%f,%f" apiKey _latitude _longitude :: String
@@ -45,6 +47,7 @@ fetchWeather (ApiKey apiKey) Coord{..} = do
 newtype ApiKey = ApiKey String deriving Show
 
 weather city = runMaybeT $ do
+    $logInfo ("Trying to fetch weather for " <> city)
     apiKey <-lift $ asks readStateApp
     coords <- MaybeT $ nominatim city
     MaybeT $ fetchWeather apiKey coords

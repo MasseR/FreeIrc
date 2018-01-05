@@ -1,8 +1,9 @@
+{-# Language NoImplicitPrelude #-}
 module Types where
 
+import ClassyPrelude
 import Control.Concurrent.STM.TChan (TChan)
-import Data.Text (Text)
-import Control.Monad.Reader
+import Control.Monad.Logger
 
 data OutMsg =
     Nick !Text
@@ -23,4 +24,4 @@ data ReadState app = ReadState { readStateOutChannel :: OutChannel
                                , readStateApp :: app }
 
 
-type Handler app a = ReaderT (ReadState app) IO a
+type Handler app a = ReaderT (ReadState app) (LoggingT IO) a

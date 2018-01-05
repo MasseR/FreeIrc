@@ -16,7 +16,7 @@ class HasApp app b | b -> app where
 
 data Plugin msg app = Plugin { app :: app
                              , clean :: app -> IO ()
-                             , work :: msg -> ReaderT (ReadState app) IO () }
+                             , work :: msg -> Handler app () }
 
 data Plugins msg (a :: [*]) where
     PNil :: Plugins msg '[]

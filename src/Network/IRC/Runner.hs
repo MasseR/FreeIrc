@@ -4,6 +4,7 @@
 {-# Language TypeFamilies #-}
 {-# Language FlexibleContexts #-}
 {-# Language ScopedTypeVariables #-}
+{-# Language TemplateHaskell #-}
 module Network.IRC.Runner where
 
 import Hooks.Algebra
@@ -18,10 +19,12 @@ import qualified Data.Text.IO as T
 import qualified Data.Text as T
 import Control.Concurrent.STM.TChan
 import Control.Concurrent.STM (atomically)
+import Control.Concurrent.Async.Lifted (async, Async)
 import Control.Concurrent (forkIO, ThreadId, threadDelay)
 import Data.Acid.Database
 import Control.Exception (bracket)
-import Control.Monad.Freer
+import Control.Monad.Logger
+import Control.Monad.Trans.Control
 import Plugin
 import Types
 
@@ -34,49 +37,49 @@ data IrcInfo ps = IrcInfo {
   }
 
 connectIrc :: IrcInfo ps -> IO ()
-connectIrc IrcInfo{..} = do
-    chans@(inChan, outChan) <- (,) <$> atomically newTChan <*> atomically newTChan
+connectIrc IrcInfo{..} = runStdoutLoggingT $ do
+    chans@(inChan, outChan) <- liftIO ((,) <$> atomically newTChan <*> atomically newTChan)
     connect hostname (show port) $ \(sock, addr) -> do
-        handle <- socketToHandle sock ReadWriteMode
-        forkIO $ do
-          threadDelay (2 * 10^6)
+        handle <- liftIO $ socketToHandle sock ReadWriteMode
+        async $ do
+          liftIO $ threadDelay (2 * 10^6)
           mapM_ (sendMessage' outChan) (initial nick channels)
-        forkIO (ircWriter outChan handle)
+        async (ircWriter outChan handle)
         runPlugins chans hooks
         ircReader outChan inChan handle
-        hClose handle
+        liftIO $ hClose handle
 
 initial :: Text -> [Text] -> [OutMsg]
 initial nick channels = [Nick nick, User "foo" "foo" "foo" "foo"] ++ [Join c | c <- channels]
 
-ircWriter :: TChan OutMsg -> Handle -> IO ()
+ircWriter :: TChan OutMsg -> Handle -> LoggingT IO ()
 ircWriter out handle = forever $ do
-  msg <- atomically $ readTChan out
+  msg <- liftIO $ atomically $ readTChan out
   let bs = renderMessage msg <> "\r\n"
-  T.putStr bs
-  T.hPutStr handle bs
+  $logInfo bs
+  liftIO $ T.hPutStr handle bs
 
-ircReader :: TChan OutMsg -> TChan InMsg -> Handle -> IO ()
+ircReader :: TChan OutMsg -> TChan InMsg -> Handle -> LoggingT IO ()
 ircReader outChan inChan h = forever $ do
-    line <- T.strip <$> T.hGetLine h
+    line <- liftIO (T.strip <$> T.hGetLine h)
     let msg = parseLine line
     case msg of
-         Right (Ping response) -> atomically $ writeTChan outChan (Pong response)
-         Right m -> atomically $ writeTChan inChan m
-         Left err -> T.putStrLn $ "Unparsed " <> err
+         Right (Ping response) -> liftIO $ atomically $ writeTChan outChan (Pong response)
+         Right m -> liftIO $ atomically $ writeTChan inChan m
+         Left err -> $logWarn ("Unparsed " <> err)
 
-runPlugins :: Hook -> Plugins InMsg apps -> IO [ThreadId]
+runPlugins :: Hook -> Plugins InMsg apps -> LoggingT IO [Async ()]
 runPlugins _ PNil = return []
 runPlugins original (plugin :> ps) = do
     t <- runPlugin original plugin
     ts <- runPlugins original ps
     return $ t : ts
 
-runPlugin :: HasApp app (ReadState app) => Hook -> Plugin InMsg app -> IO ThreadId
+runPlugin :: HasApp app (ReadState app) => Hook -> Plugin InMsg app -> LoggingT IO (Async ())
 runPlugin original (Plugin env _ w) = do
-    (inChan, outChan) <- atomically $ duplicate original
-    forkIO $ forever $ do
-        msg <- atomically $ readTChan inChan
-        void $ forkIO (runReaderT (w msg) (ReadState outChan env))
+    (inChan, outChan) <- liftIO $ atomically $ duplicate original
+    async $ forever $ do
+        msg <- liftIO $ atomically $ readTChan inChan
+        runReaderT (w msg) (ReadState outChan env)
     where
         duplicate (a,b) = (,) <$> dupTChan a <*> dupTChan b

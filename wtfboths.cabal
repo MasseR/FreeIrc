@@ -51,3 +51,7 @@ executable wtfboths
                      , regex-tdfa
                      , async
                      , classy-prelude
+                     , monad-logger
+                     , monad-control
+                     , lifted-base
+                     , lifted-async

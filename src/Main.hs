@@ -1,6 +1,7 @@
 {-# Language OverloadedStrings #-}
 {-# Language FlexibleContexts #-}
 {-# Language NoImplicitPrelude #-}
+{-# Language DataKinds #-}
 module Main where
 
 import ClassyPrelude hiding (Handler)
@@ -44,6 +45,7 @@ uptimeHook _ = return ()
 base = Plugin () (const $ return ())
 
 
+myPlugins :: HasDarkskyApiKey s String => UTCTime -> AcidState IrcState -> s -> Plugins InMsg '[(), AcidState IrcState, AcidState IrcState, ApiKey, UTCTime]
 myPlugins start acid conf = base adminHook
                          :> Plugin acid (const $ return ()) urlTitleHook
                          :> Plugin acid (const $ return ()) plusOneHook
@@ -51,6 +53,7 @@ myPlugins start acid conf = base adminHook
                          :> Plugin start (const $ return ()) uptimeHook
                          :> PNil
 
+withAcid :: FilePath -> IrcState -> (AcidState IrcState -> IO c) -> IO c
 withAcid path initial = bracket (openLocalStateFrom path initial) createCheckpointAndClose
 
 

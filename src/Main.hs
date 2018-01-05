@@ -1,8 +1,9 @@
 {-# Language OverloadedStrings #-}
 {-# Language FlexibleContexts #-}
+{-# Language NoImplicitPrelude #-}
 module Main where
 
-import Control.Exception (bracket)
+import ClassyPrelude hiding (Handler)
 import Data.Acid.Database
 import Config
 import Data.Yaml.Config
@@ -14,9 +15,6 @@ import Network.IRC.Runner (IrcInfo(..))
 import qualified Network.IRC.Runner as IRC
 import Plugin
 import Hooks.Algebra
-import Control.Monad.Reader
-import Control.Monad.Trans
-import Control.Monad (forM_)
 import Hooks.Title
 import Hooks.Weather
 import Hooks.PlusOne
@@ -27,8 +25,7 @@ import qualified Data.Text as T
 import Data.Time
 import Control.Lens ((^.), (^..))
 import Data.Text.Lens (packed, unpacked)
-import Control.Concurrent (threadDelay)
-import Control.Concurrent.Async (async, wait)
+import Control.Concurrent.Async (wait)
 
 
 

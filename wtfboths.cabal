@@ -50,3 +50,4 @@ executable wtfboths
                      , yaml
                      , regex-tdfa
                      , async
+                     , classy-prelude

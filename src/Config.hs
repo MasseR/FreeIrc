@@ -5,6 +5,7 @@
 {-# Language MultiParamTypeClasses #-}
 {-# Language FunctionalDependencies #-}
 {-# Language FlexibleInstances #-}
+{-# Language RecordWildCards #-}
 module Config where
 
 import Network.IRC.Runner
@@ -15,7 +16,7 @@ import GHC.Generics (Generic)
 import Control.Lens
 import Data.Aeson
 
-data ConnectionConf = ConnectionConf { connectionConfHostname :: Text
+data ConnectionConf = ConnectionConf { connectionConfHostname :: String
                                      , connectionConfPort :: Int
                                      , connectionConfChannels :: [Text]
                                      , connectionConfUsername :: Text } deriving (Generic, Show)
@@ -51,6 +52,6 @@ defaultMain = connectIrc
 
 -- XXX: Add helper for automatic parsing of Config -> IrcInfo
 
-defaultConf :: IrcInfo '[]
-defaultConf = IrcInfo "localhost" 6667 "FooBot" ["#oo"] PNil
+defaultConf :: ConnectionConf -> IrcInfo '[]
+defaultConf ConnectionConf{..} = IrcInfo connectionConfHostname connectionConfPort connectionConfUsername connectionConfChannels PNil
 

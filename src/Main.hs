@@ -61,8 +61,7 @@ main :: IO ()
 main = withAcid "state" initialIrcState $ \acid -> do
     now <- getCurrentTime
     conf <- loadYamlSettings ["config/irc.yaml"] [] ignoreEnv :: IO Configuration
-    let runConf = defaultConf {hooks = myPlugins now acid $ conf ^. hooksConf}
-    threads <- forM (conf ^. connection) $ \c ->
-        async . defaultMain $ runConf { IRC.hostname = c ^. Config.hostname.unpacked
-                                       , IRC.port = c ^. Config.port }
+    let runConfs = [(defaultConf conn) {hooks = myPlugins now acid $ conf ^. hooksConf} | conn <- conf ^. connection]
+    threads <- forM runConfs $ \c ->
+        async . defaultMain $ c
     mapM_ wait threads

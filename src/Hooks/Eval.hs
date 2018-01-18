@@ -1,6 +1,7 @@
 {-# Language NoImplicitPrelude #-}
 {-# Language OverloadedStrings #-}
 {-# Language FlexibleContexts #-}
+{-# Language TemplateHaskell #-}
 module Hooks.Eval where
 
 import ClassyPrelude
@@ -23,8 +24,12 @@ mueval expr = snd <$> sourceProcessWithConsumer p consumer
         consumer = Text.decodeUtf8 .| Text.lines .| CL.consume
 
 -- XXX: Do a monadlogger instance with mmorph and monadcontrol
-djinn :: (MonadThrow m, MonadIO m) => Text -> m [Text]
-djinn expr = snd' <$> liftIO (sourceProcessWithStreams p (yield $ encodeUtf8 expr) consumer C.stderr)
+djinn :: (MonadThrow m, MonadLogger m, MonadIO m) => Text -> m [Text]
+djinn expr = do
+    $logInfo ("Evaluating " <> expr)
+    (st,x,_) <- liftIO (sourceProcessWithStreams p (yield $ encodeUtf8 (expr <> "\n")) consumer C.stderr)
+    $logInfo ("Evaluated with " <> pack (show st))
+    return x
     where
         snd' (_,x,_) = x
         p = proc "djinn" ["/dev/stdin"]
@@ -33,10 +38,16 @@ djinn expr = snd' <$> liftIO (sourceProcessWithStreams p (yield $ encodeUtf8 exp
 
 data EvalState = EvalState
 
-evalHook (PrivMsg nick target msg) =
+evalHook (PrivMsg nick target msg) = do
+    $logInfo msg
     case words msg of
-         (">" : rest) -> mueval (unpack $ unwords rest) >>= respond
-         (">>" : rest) -> djinn ("? " <> unwords rest) >>= respond
+         (">" : rest) -> do
+             $logInfo ("Trying to eval " <> unwords rest)
+             mueval (unpack $ unwords rest) >>= respond
+         (">>" : rest) -> do
+             $logInfo ("Trying to djinn " <> unwords rest)
+             djinn ("? " <> unwords rest) >>= respond
+         _ -> return ()
     where
         respond [] = return ()
         respond xs = mapM_ (respondTo nick target . take 1024) . take 3 $ xs

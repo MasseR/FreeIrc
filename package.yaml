@@ -36,7 +36,6 @@ dependencies:
 - monad-control
 - lifted-base
 - lifted-async
-- mueval
 - process
 - conduit
 - conduit-extra

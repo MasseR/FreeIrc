@@ -20,6 +20,7 @@ executable wtfboths
                      , Hooks.Title
                      , Hooks.Weather
                      , Hooks.PlusOne
+                     , Hooks.Eval
                      , Config
                      , Data.Acid.Database
                      , Plugin
@@ -53,3 +54,8 @@ executable wtfboths
                      , monad-control
                      , lifted-base
                      , lifted-async
+                     , mueval
+                     , process
+                     , conduit
+                     , conduit-extra
+                     , conduit-combinators

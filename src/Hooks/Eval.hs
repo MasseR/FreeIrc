@@ -31,6 +31,7 @@ djinn expr = snd' <$> liftIO (sourceProcessWithStreams p (yield $ encodeUtf8 exp
         consumer = Text.decodeUtf8 .| Text.lines .| CL.consume
 
 
+data EvalState = EvalState
 
 evalHook (PrivMsg nick target msg) =
     case words msg of

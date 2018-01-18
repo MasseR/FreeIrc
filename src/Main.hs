@@ -16,6 +16,7 @@ import Network.IRC.Runner (IrcInfo(..))
 import qualified Network.IRC.Runner as IRC
 import Plugin
 import Hooks.Algebra
+import Hooks.Eval
 import Hooks.Title
 import Hooks.Weather
 import Hooks.PlusOne
@@ -52,12 +53,13 @@ uptimeHook _ = return ()
 base = Plugin () (const $ return ())
 
 
-myPlugins :: HasDarkskyApiKey s String => UTCTime -> AcidState IrcState -> s -> Plugins InMsg '[(), AcidState IrcState, AcidState IrcState, ApiKey, UTCTime]
+-- myPlugins :: HasDarkskyApiKey s String => UTCTime -> AcidState IrcState -> s -> Plugins InMsg '[(), AcidState IrcState, AcidState IrcState, ApiKey, UTCTime]
 myPlugins start acid conf = base adminHook
                          :> Plugin acid (const $ return ()) urlTitleHook
                          :> Plugin acid (const $ return ()) plusOneHook
                          :> Plugin (ApiKey (conf ^. darkskyApiKey)) (const $ return ()) weatherHook
                          :> Plugin start (const $ return ()) uptimeHook
+                         :> Plugin EvalState (const $ return ()) evalHook
                          :> PNil
 
 withAcid :: FilePath -> IrcState -> (AcidState IrcState -> IO c) -> IO c

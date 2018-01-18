@@ -1,0 +1,47 @@
+name: wtfboths
+version: '0.1.0.0'
+synopsis: Simple project template from stack
+description: Please see README.md
+category: Web
+author: Author name here
+maintainer: example@example.com
+copyright: 2016 Author name here
+license: BSD3
+homepage: https://github.com/githubuser/wtfboths#readme
+dependencies:
+- base >=4.7 && <5
+- network
+- network-simple
+- text
+- bytestring
+- stm
+- wreq
+- tagsoup
+- lens
+- mtl
+- transformers
+- lens
+- case-insensitive
+- time
+- acid-state
+- safecopy
+- containers
+- aeson
+- lens-aeson
+- yaml
+- regex-tdfa
+- async
+- classy-prelude
+- monad-logger
+- monad-control
+- lifted-base
+- lifted-async
+- mueval
+- process
+- conduit
+- conduit-extra
+- conduit-combinators
+executables:
+  wtfboths:
+    main: Main.hs
+    source-dirs: src

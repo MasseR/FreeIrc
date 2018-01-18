@@ -2,3 +2,4 @@
 Session.vim
 .stack-work
 *.swp
+*.cabal

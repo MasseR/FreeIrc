@@ -20,6 +20,7 @@ import Hooks.Eval
 import Hooks.Title
 import Hooks.Weather
 import Hooks.PlusOne
+import Hooks.Chatter
 import Network.IRC
 import Types
 import qualified Network.IRC as IRC
@@ -58,6 +59,7 @@ myPlugins start acid conf = base adminHook
                          :> Plugin acid (const $ return ()) urlTitleHook
                          :> Plugin acid (const $ return ()) plusOneHook
                          :> Plugin (ApiKey (conf ^. darkskyApiKey)) (const $ return ()) weatherHook
+                         :> Plugin (ApiKey (conf ^. darkskyApiKey)) (const $ return ()) chatterHook
                          :> Plugin start (const $ return ()) uptimeHook
                          :> Plugin EvalState (const $ return ()) evalHook
                          :> PNil

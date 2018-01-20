@@ -23,6 +23,7 @@ newtype Normalized = Normalized [Text]
 -- newtype SentenceStateB a = SentenceStateB {unSentenceStateB :: State (Map Text [Text]) a}
 --     deriving (Functor, Applicative, Monad, MonadState (Map Text [Text]))
 type SentenceStateB a = forall m. MonadState (Map Text [Text]) m => m a
+type Ctx = Map Text [Text]
 
 -- |Describe different matching types
 data Matcher = WordMatch !Text -- ^ The most basic matcher, matches the word under cursor
@@ -35,7 +36,7 @@ MatchTree f is the foundation for matching content. It is basically a trie,
 with matchers as the leafs. The leafs should be tried against normalized words.
 |-}
 data MatchTree m = Root [MatchTree m]
-                 | Leaf !Matcher [MatchTree m] (Maybe (m ()))
+                 | Leaf !Matcher [MatchTree m] (Maybe (Ctx -> m ()))
 
 -- |Match a matcher against a normalized word.
 match :: Matcher -> Text -> SentenceStateB Bool
@@ -62,10 +63,10 @@ add l (Root cs) = concatMap (add l) cs
 Match a normalized wordlist against a ready tree. Return a list of actions
 while building the sentence state at the same time.
 |-}
-matchTree :: Monad m => Normalized -> MatchTree m -> SentenceStateB [m ()]
+matchTree :: Monad m => Normalized -> MatchTree m -> SentenceStateB [Ctx -> m ()]
 matchTree (Normalized xs) = go xs
     where
-        go :: Monad m => [Text] -> MatchTree m -> SentenceStateB [m ()]
+        go :: Monad m => [Text] -> MatchTree m -> SentenceStateB [Ctx -> m ()]
         go [] (Leaf _ _ f) = return (maybeToList f)
         go ws (Root cs) = concat <$> mapM (go ws) cs
         go [w] (Leaf m _ f) = match m w >>=
@@ -74,7 +75,7 @@ matchTree (Normalized xs) = go xs
             \matched -> if matched then concat <$> mapM (go ws) cs else return []
 
 
-build :: Monad m => [(m (), Text)] -> MatchTree m
+build :: Monad m => [(Ctx -> m (), Text)] -> MatchTree m
 build ws =
     case foldr (flip add . uncurry fromText) [] ws of
          [Root cs] -> Root cs
@@ -87,7 +88,7 @@ Build a tree *spine* from a sentence.
 The given sentence is uppercased and parsed for some tokens. Tokens '*' and
 ':variablename:' are understood, creating Star and NamedStar respectively
 |-}
-fromText :: Monad m => m () -> Text -> MatchTree m
+fromText :: Monad m => (Ctx -> m ()) -> Text -> MatchTree m
 fromText f = Root . addAction . go . T.words . T.toUpper
     where
         go ("*":ws) = [Leaf Star (go ws) Nothing]
@@ -100,8 +101,8 @@ fromText f = Root . addAction . go . T.words . T.toUpper
         addAction x = x
 
 -- |Run the matcher against input text. The text is normalized.
-runMatcher :: Monad m => Text -> MatchTree (ReaderT (Map Text [Text]) m) -> m ()
+runMatcher :: Monad m => Text -> MatchTree m -> m ()
 runMatcher sentence tree =
-    let (f,s) = runState (matchTree normalizedSentence tree) M.empty
+    let (fs,s) = runState (matchTree normalizedSentence tree) M.empty
         normalizedSentence = Normalized . T.words . T.toUpper $ sentence
-    in runReaderT (sequence_ f) s
+    in mapM_ (\f -> f s) fs

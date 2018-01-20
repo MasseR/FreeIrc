@@ -31,4 +31,6 @@ language: nix
 # - stack --no-terminal --fast test --haddock --no-haddock-deps
 
 script:
+    - nix-env -f "<nixpkgs>" -iA haskellPackages.hpack
+    - hpack .
     - nix-build shell.nix

@@ -1,5 +1,6 @@
 {-# Language NoImplicitPrelude #-}
 {-# Language FlexibleContexts #-}
+{-# Language OverloadedStrings #-}
 module Hooks.Chatter where
 
 import Chat

@@ -43,5 +43,8 @@ dependencies:
 - conduit-combinators
 executables:
   wtfboths:
+    ghc-options:
+        - -threaded
+        - -O2
     main: Main.hs
     source-dirs: src

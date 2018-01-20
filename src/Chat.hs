@@ -5,6 +5,7 @@ module Chat  where
 
 import Control.Monad.State
 import Control.Monad.Reader
+import Control.Monad.Writer
 import Data.Text (Text)
 import Data.Map.Strict (Map)
 import Data.Monoid ((<>))
@@ -38,6 +39,7 @@ with matchers as the leafs. The leafs should be tried against normalized words.
 data MatchTree m = Root [MatchTree m]
                  | Leaf !Matcher [MatchTree m] (Maybe (Ctx -> m ()))
 
+
 -- |Match a matcher against a normalized word.
 match :: Matcher -> Text -> SentenceStateB Bool
 match (WordMatch x) w | x == w = return True
@@ -50,6 +52,7 @@ Combine tries together. The trie in the second argument is tried against all
 the tries in the first argument. If there is a match, the subtrees are joined
 recursively, otherwise the new trie is prepended to the list of tries.
 |-}
+-- XXX: Can this be converted into MatchTree m -> MatchTree m -> MatchTree m
 add :: Functor f => [MatchTree f] -> MatchTree f -> [MatchTree f]
 add [] l = [l]
 add (Root cs : _) l = [Root (add cs l)]

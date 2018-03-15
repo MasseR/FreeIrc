@@ -1,11 +1,14 @@
-.PHONY: build test
+.PHONY: build test nixrepl
 
-all: build
+all: test
+
+nixrepl:
+	hpack -f
+	cabal2nix ./. > default.nix
+	touch shell.nix
+	cabal repl
 
 build:
-	stack setup
-	stack build
+	./cibuild.sh
 
 test: build
-	stack test
-	hlint src

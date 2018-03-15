@@ -22,7 +22,8 @@ import Control.Concurrent.STM (atomically)
 import Control.Concurrent.Async.Lifted (async, Async)
 import Control.Concurrent (forkIO, ThreadId, threadDelay)
 import Data.Acid.Database
-import Control.Exception (bracket)
+import Control.Exception (SomeException, catch)
+import Control.Exception.Lifted (bracket)
 import Control.Monad.Logger
 import Control.Monad.Trans.Control
 import Plugin
@@ -37,17 +38,21 @@ data IrcInfo ps = IrcInfo {
   }
 
 connectIrc :: IrcInfo ps -> IO ()
-connectIrc IrcInfo{..} = runStdoutLoggingT $ do
-    chans@(inChan, outChan) <- liftIO ((,) <$> atomically newTChan <*> atomically newTChan)
-    connect hostname (show port) $ \(sock, addr) -> do
-        handle <- liftIO $ socketToHandle sock ReadWriteMode
-        async $ do
-          liftIO $ threadDelay (2 * 10^6)
-          mapM_ (sendMessage' outChan) (initial nick channels)
-        async (ircWriter outChan handle)
-        runPlugins chans hooks
-        ircReader outChan inChan handle
-        liftIO $ hClose handle
+connectIrc info@IrcInfo{..} = run `catch` (\e -> let _ = e :: SomeException in threadDelay 30000000 >> connectIrc info)
+  where
+    run = runStdoutLoggingT $ do
+      chans@(inChan, outChan) <- liftIO ((,) <$> atomically newTChan <*> atomically newTChan)
+      connect hostname (show port) $ \(sock, addr) ->
+        bracket
+          (liftIO $ socketToHandle sock ReadWriteMode)
+          (liftIO . hClose) $ \handle -> do
+            async $ do
+              liftIO $ threadDelay (2 * 10^6)
+              mapM_ (sendMessage' outChan) (initial nick channels)
+            async (ircWriter outChan handle)
+            runPlugins chans hooks
+            ircReader outChan inChan handle
+            liftIO $ hClose handle
 
 initial :: Text -> [Text] -> [OutMsg]
 initial nick channels = [Nick nick, User "foo" "foo" "foo" "foo"] ++ [Join c | c <- channels]
